@@ -47,6 +47,10 @@ def connect():
     con = sqlite3.connect(DB)
     con.execute("PRAGMA foreign_keys=ON")
     con.executescript(SCHEMA)
+    # مهاجرت امن برای پایگاه‌داده‌های ساخته‌شده در نسخه‌های قبلی
+    campaign_columns = {row[1] for row in con.execute("PRAGMA table_info(campaigns)")}
+    if "published_within_hours" not in campaign_columns:
+        con.execute("ALTER TABLE campaigns ADD COLUMN published_within_hours INTEGER NOT NULL DEFAULT 168")
     return con
 
 class App(tk.Tk):
@@ -86,6 +90,8 @@ class App(tk.Tk):
         f=self.camp_tab
         form=ttk.LabelFrame(f,text="تعریف کمپین",padding=12); form.pack(fill="x")
         self.c_name=tk.StringVar(); self.c_category=tk.StringVar(); self.c_city=tk.StringVar(value="دزفول"); self.c_keywords=tk.StringVar()
+        self.c_age_filter=tk.StringVar(value="۷ روز گذشته")
+        self.age_filter_hours={"همه آگهی‌ها":0,"۳ ساعت گذشته":3,"۱۲ ساعت گذشته":12,"۱ روز گذشته":24,"۳ روز گذشته":72,"۷ روز گذشته":168}
         fields=[("نام کمپین",self.c_name),("حوزه / دسته",self.c_category),("کد شهر در دیوار (مثلاً dezful)",self.c_city),("کلمات کلیدی (با ویرگول)",self.c_keywords)]
         for i,(label,var) in enumerate(fields):
             r,c=divmod(i,2)
@@ -93,15 +99,18 @@ class App(tk.Tk):
             ttk.Label(cell,text=label).pack(anchor="e")
             ttk.Entry(cell,textvariable=var,justify="right").pack(fill="x")
         form.columnconfigure(0,weight=1); form.columnconfigure(1,weight=1)
-        ttk.Label(form,text="متن پیام پیشنهادی (صرفاً برای پاسخ به درخواست/مکالمه مجاز؛ نه تبلیغ سرد):").grid(row=2,column=0,columnspan=2,sticky="e",padx=6,pady=(8,2))
-        self.c_message=tk.Text(form,height=3,wrap="word"); self.c_message.grid(row=3,column=0,columnspan=2,sticky="ew",padx=6)
-        actions=ttk.Frame(form); actions.grid(row=4,column=0,columnspan=2,sticky="e",pady=8)
+        age_cell=ttk.Frame(form); age_cell.grid(row=2,column=0,columnspan=2,sticky="ew",padx=6,pady=(8,2))
+        ttk.Label(age_cell,text="فیلتر تاریخ انتشار آگهی").pack(anchor="e")
+        ttk.Combobox(age_cell,textvariable=self.c_age_filter,values=list(self.age_filter_hours),state="readonly",justify="right").pack(fill="x")
+        ttk.Label(form,text="متن پیام پیشنهادی (صرفاً برای پاسخ به درخواست/مکالمه مجاز؛ نه تبلیغ سرد):").grid(row=3,column=0,columnspan=2,sticky="e",padx=6,pady=(8,2))
+        self.c_message=tk.Text(form,height=3,wrap="word"); self.c_message.grid(row=4,column=0,columnspan=2,sticky="ew",padx=6)
+        actions=ttk.Frame(form); actions.grid(row=5,column=0,columnspan=2,sticky="e",pady=8)
         ttk.Button(actions,text="ذخیره کمپین",command=self.save_campaign).pack(side="right",padx=4)
         ttk.Button(actions,text="بازکردن جستجوی دیوار",command=self.open_search).pack(side="right",padx=4)
         ttk.Button(actions,text="پاک‌کردن فرم",command=self.clear_campaign).pack(side="right",padx=4)
         lower=ttk.LabelFrame(f,text="کمپین‌های ذخیره‌شده",padding=8); lower.pack(fill="both",expand=True,pady=12)
-        self.campaign_tree=ttk.Treeview(lower,columns=("id","name","category","city","keywords"),show="headings",height=8)
-        for col,title,w in [("id","شناسه",60),("name","نام کمپین",220),("category","حوزه",170),("city","شهر",120),("keywords","کلمات کلیدی",400)]:
+        self.campaign_tree=ttk.Treeview(lower,columns=("id","name","category","city","age_filter","keywords"),show="headings",height=8)
+        for col,title,w in [("id","شناسه",60),("name","نام کمپین",190),("category","حوزه",140),("city","شهر",100),("age_filter","تاریخ انتشار",130),("keywords","کلمات کلیدی",340)]:
             self.campaign_tree.heading(col,text=title); self.campaign_tree.column(col,width=w,anchor="e")
         self.campaign_tree.pack(fill="both",expand=True)
         self.campaign_tree.bind("<<TreeviewSelect>>",self.select_campaign)
@@ -143,24 +152,26 @@ class App(tk.Tk):
     def save_campaign(self):
         name=self.c_name.get().strip()
         if not name: messagebox.showwarning("ورودی ناقص","نام کمپین را وارد کنید."); return
-        values=(name,self.c_category.get().strip(),self.c_city.get().strip(),self.c_keywords.get().strip(),self.c_message.get("1.0","end").strip())
+        values=(name,self.c_category.get().strip(),self.c_city.get().strip(),self.c_keywords.get().strip(),self.c_message.get("1.0","end").strip(),self.age_filter_hours[self.c_age_filter.get()])
         with connect() as con:
             if self.campaign_id:
-                con.execute("UPDATE campaigns SET name=?,category=?,city=?,keywords=?,message_template=? WHERE id=?",values+(self.campaign_id,))
+                con.execute("UPDATE campaigns SET name=?,category=?,city=?,keywords=?,message_template=?,published_within_hours=? WHERE id=?",values+(self.campaign_id,))
             else:
-                cur=con.execute("INSERT INTO campaigns(name,category,city,keywords,message_template) VALUES(?,?,?,?,?)",values)
+                cur=con.execute("INSERT INTO campaigns(name,category,city,keywords,message_template,published_within_hours) VALUES(?,?,?,?,?,?)",values)
                 self.campaign_id=cur.lastrowid
         self.refresh_campaigns(); messagebox.showinfo("ذخیره شد","کمپین ذخیره شد.")
 
     def clear_campaign(self):
         for v in (self.c_name,self.c_category,self.c_keywords): v.set("")
-        self.c_city.set("دزفول"); self.c_message.delete("1.0","end"); self.campaign_id=None
+        self.c_city.set("دزفول"); self.c_age_filter.set("۷ روز گذشته"); self.c_message.delete("1.0","end"); self.campaign_id=None
 
     def refresh_campaigns(self):
         for x in self.campaign_tree.get_children(): self.campaign_tree.delete(x)
         with connect() as con:
-            for row in con.execute("SELECT id,name,category,city,keywords FROM campaigns ORDER BY id DESC"):
-                self.campaign_tree.insert("","end",values=row)
+            for row in con.execute("SELECT id,name,category,city,published_within_hours,keywords FROM campaigns ORDER BY id DESC"):
+                hours=row[4]
+                age_label=next((label for label,value in self.age_filter_hours.items() if value==hours),"۷ روز گذشته")
+                self.campaign_tree.insert("","end",values=(row[0],row[1],row[2],row[3],age_label,row[5]))
 
     def select_campaign(self,_event=None):
         selected=self.campaign_tree.selection()
@@ -168,8 +179,9 @@ class App(tk.Tk):
         vals=self.campaign_tree.item(selected[0],"values")
         self.campaign_id=int(vals[0])
         with connect() as con:
-            row=con.execute("SELECT name,category,city,keywords,message_template FROM campaigns WHERE id=?",(self.campaign_id,)).fetchone()
+            row=con.execute("SELECT name,category,city,keywords,message_template,published_within_hours FROM campaigns WHERE id=?",(self.campaign_id,)).fetchone()
         self.c_name.set(row[0]); self.c_category.set(row[1]); self.c_city.set(row[2]); self.c_keywords.set(row[3])
+        self.c_age_filter.set(next((label for label,value in self.age_filter_hours.items() if value==row[5]),"۷ روز گذشته"))
         self.c_message.delete("1.0","end"); self.c_message.insert("1.0",row[4])
 
     def open_search(self):
