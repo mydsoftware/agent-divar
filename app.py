@@ -197,8 +197,15 @@ class App(tk.Tk):
         if keywords:url += f"?q={quote_plus(keywords)}"
         runner=ROOT / "browser_runner.py"
         if self.browser_process and self.browser_process.poll() is None:
-            messagebox.showinfo("مرورگر فعال است","پنجره مرورگر زنده از قبل باز است. همان پنجره را استفاده کنید.")
-            return
+            # هنگام بستن پنجره، runner ممکن است چند لحظه برای پاک‌سازی فرصت بخواهد.
+            try:
+                self.browser_process.wait(timeout=1.5)
+            except subprocess.TimeoutExpired:
+                pass
+            if self.browser_process.poll() is None:
+                messagebox.showinfo("مرورگر فعال است","فرآیند مرورگر هنوز فعال است. اگر پنجره‌ای باز نمی‌بینید، یک‌بار برنامه را ببندید و دوباره اجرا کنید.")
+                return
+            self.browser_process = None
         try:
             self.browser_process=subprocess.Popen([sys.executable,str(runner),url],cwd=str(ROOT))
             messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.")
