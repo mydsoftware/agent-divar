@@ -15,6 +15,7 @@ on:
       - "version.py"
       - "installer/**"
       - "docs/WINDOWS_INSTALLER_FA.md"
+      - "docs/WINDOWS_E2E_VALIDATION_FA.md"
       - "requirements.txt"
       - "storage.py"
       - "followup_manager.py"
