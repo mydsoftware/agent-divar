@@ -10,6 +10,10 @@ on:
       - "dashboard.py"
       - "property_media.py"
       - "media_tab.py"
+      - "backup_manager.py"
+      - "backup_tab.py"
+      - "install_windows.ps1"
+      - "run_windows.bat"
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/ci.yml"
@@ -22,6 +26,10 @@ on:
       - "dashboard.py"
       - "property_media.py"
       - "media_tab.py"
+      - "backup_manager.py"
+      - "backup_tab.py"
+      - "install_windows.ps1"
+      - "run_windows.bat"
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/ci.yml"
@@ -37,6 +45,6 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
       - name: Compile application and tests
-        run: python -m compileall -q app.py browser_runner.py storage.py followup_manager.py dashboard.py property_media.py media_tab.py tests
+        run: python -m compileall -q app.py browser_runner.py storage.py followup_manager.py dashboard.py property_media.py media_tab.py backup_manager.py backup_tab.py tests
       - name: Run test suite
         run: python -m unittest discover -s tests -v

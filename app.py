@@ -20,6 +20,7 @@ from listing_analyzer import Listing, BuyerCriteria, analyze_listing
 from followup_manager import FollowUpTab
 from dashboard import DashboardTab
 from media_tab import PropertyMediaTab
+from backup_tab import BackupTab
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
@@ -70,6 +71,7 @@ class App(tk.Tk):
         self.followup_tab=FollowUpTab(self.tabs, DB); self.tabs.add(self.followup_tab,text="تعاملات و یادآورها")
         self.dashboard_tab=DashboardTab(self.tabs, DB); self.tabs.add(self.dashboard_tab,text="داشبورد و گزارش‌ها")
         self.media_tab=PropertyMediaTab(self.tabs, DB, DATA / "property-media"); self.tabs.add(self.media_tab,text="تصاویر و مدارک ملک")
+        self.backup_tab=BackupTab(self.tabs, DB, DATA / "property-media"); self.tabs.add(self.backup_tab,text="پشتیبان‌گیری و بازیابی")
         footer=ttk.Label(self,text="یادآوری: پیام تبلیغاتی ناخواسته در چت دیوار ارسال نکنید. پیام‌رسانی فقط در جریان مجاز و با رضایت/درخواست مخاطب انجام شود.",foreground="#9a3412",padding=8)
         footer.pack(fill="x")
 
