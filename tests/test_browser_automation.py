@@ -35,6 +35,13 @@ class FakeLink:
     def get_attribute(self, name):
         return self.href if name == "href" else None
 
+    def inner_text(self, timeout=None):
+        if "phone" in self.href:
+            return "گوشی سامسونگ"
+        if "car" in self.href:
+            return "خودرو پژو"
+        return "آگهی نمونه"
+
 
 class FakePage:
     def __init__(self, urls, body=""):
@@ -92,6 +99,14 @@ class BrowserAutomationTests(unittest.TestCase):
                 "https://divar.ir/s/dezful",
             ],
         )
+
+    def test_campaign_filter_opens_only_matching_titles(self):
+        page = FakePage(["/v/phone", "/v/car"])
+        result = run_visible_search(page, category="موبایل", keywords="سامسونگ",
+                                    max_listings=5, dwell_seconds=0, sleep=lambda _: None)
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.visited, 1)
+        self.assertEqual(result.listings[0]["title"], "گوشی سامسونگ")
 
     def test_non_divar_page_is_not_touched(self):
         page = FakePage(["/v/one"])
