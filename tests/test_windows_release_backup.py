@@ -3,6 +3,7 @@
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from backup_manager import create_backup, inspect_backup, restore_backup
@@ -15,9 +16,10 @@ class WindowsReleaseBackupTests(unittest.TestCase):
             source_db = root / "source.sqlite3"
             source_media = root / "source-media"
             source_media.mkdir()
-            with sqlite3.connect(source_db) as con:
+            with closing(sqlite3.connect(source_db)) as con:
                 con.execute("CREATE TABLE sample (value TEXT NOT NULL)")
                 con.execute("INSERT INTO sample VALUES ('نسخه پشتیبان')")
+                con.commit()
             (source_media / "photo.txt").write_text("media-from-backup", encoding="utf-8")
 
             archive = create_backup(source_db, source_media, root / "release.zip")
@@ -26,16 +28,17 @@ class WindowsReleaseBackupTests(unittest.TestCase):
 
             target_db = root / "target" / "leads.sqlite3"
             target_db.parent.mkdir()
-            with sqlite3.connect(target_db) as con:
+            with closing(sqlite3.connect(target_db)) as con:
                 con.execute("CREATE TABLE sample (value TEXT NOT NULL)")
                 con.execute("INSERT INTO sample VALUES ('داده قدیمی')")
+                con.commit()
             target_media = root / "target" / "property-media"
             target_media.mkdir()
             (target_media / "obsolete.txt").write_text("old", encoding="utf-8")
 
             result = restore_backup(archive, target_db, target_media)
 
-            with sqlite3.connect(target_db) as con:
+            with closing(sqlite3.connect(target_db)) as con:
                 self.assertEqual(
                     con.execute("SELECT value FROM sample").fetchone()[0],
                     "نسخه پشتیبان",
