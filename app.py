@@ -3,6 +3,8 @@
 from __future__ import annotations
 import sqlite3
 import webbrowser
+import subprocess
+import sys
 from pathlib import Path
 from urllib.parse import quote_plus
 import tkinter as tk
@@ -62,6 +64,8 @@ class App(tk.Tk):
         self.minsize(980, 650)
         self.option_add("*Font", "Tahoma 10")
         self.campaign_id = None
+        self.browser_process = None
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
         self._style()
         self._build()
         self.refresh_campaigns()
@@ -107,7 +111,7 @@ class App(tk.Tk):
         self.c_message=tk.Text(form,height=3,wrap="word"); self.c_message.grid(row=4,column=0,columnspan=2,sticky="ew",padx=6)
         actions=ttk.Frame(form); actions.grid(row=5,column=0,columnspan=2,sticky="e",pady=8)
         ttk.Button(actions,text="ذخیره کمپین",command=self.save_campaign).pack(side="right",padx=4)
-        ttk.Button(actions,text="بازکردن جستجوی دیوار",command=self.open_search).pack(side="right",padx=4)
+        ttk.Button(actions,text="اجرای زنده در مرورگر ویندوز",command=self.open_search).pack(side="right",padx=4)
         ttk.Button(actions,text="پاک‌کردن فرم",command=self.clear_campaign).pack(side="right",padx=4)
         lower=ttk.LabelFrame(f,text="کمپین‌های ذخیره‌شده",padding=8); lower.pack(fill="both",expand=True,pady=12)
         self.campaign_tree=ttk.Treeview(lower,columns=("id","name","category","city","age_filter","keywords"),show="headings",height=8)
@@ -191,7 +195,21 @@ class App(tk.Tk):
         city_slug=city.lower().replace(" ","-") if city.isascii() else "iran"
         url=f"https://divar.ir/s/{quote_plus(city_slug)}"
         if keywords:url += f"?q={quote_plus(keywords)}"
-        webbrowser.open(url)
+        runner=ROOT / "browser_runner.py"
+        if self.browser_process and self.browser_process.poll() is None:
+            messagebox.showinfo("مرورگر فعال است","پنجره مرورگر زنده از قبل باز است. همان پنجره را استفاده کنید.")
+            return
+        try:
+            self.browser_process=subprocess.Popen([sys.executable,str(runner),url],cwd=str(ROOT))
+            messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.")
+        except Exception as exc:
+            messagebox.showerror("خطای اجرا",f"اجرای مرورگر ناموفق بود:\\n{exc}")
+
+    def on_close(self):
+        if self.browser_process and self.browser_process.poll() is None:
+            if messagebox.askyesno("خروج","مرورگر زنده نیز بسته شود؟"):
+                self.browser_process.terminate()
+        self.destroy()
 
     def save_lead(self):
         url=self.l_url.get().strip()
