@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "leads.sqlite3"
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
 
 
 def _utc_now() -> str:
@@ -78,6 +78,11 @@ def initialize(db_path: str | Path = DEFAULT_DB_PATH) -> None:
             "rooms": "INTEGER",
             "location": "TEXT NOT NULL DEFAULT ''",
             "features_json": "TEXT NOT NULL DEFAULT '[]'",
+            "listing_type": "TEXT NOT NULL DEFAULT 'عمومی'",
+            "attributes_json": "TEXT NOT NULL DEFAULT '{}'",
+            "discovered_at": "TEXT",
+            "match_score": "INTEGER",
+            "match_reason": "TEXT NOT NULL DEFAULT ''",
         }
         for column, definition in lead_additions.items():
             if column not in lead_columns:
