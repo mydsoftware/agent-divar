@@ -302,6 +302,8 @@ class App(tk.Tk):
                 features=[x.strip() for x in self.l_features.get().split(",") if x.strip()]
                 con.execute("""INSERT INTO leads(campaign_id,ad_url,title,category,city,public_contact,notes,consent_status,stage,price,area,rooms,location,features_json)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(self.campaign_id,url,self.l_title.get().strip(),self.l_category.get().strip(),self.l_city.get().strip(),self.l_contact.get().strip(),self.l_notes.get("1.0","end").strip(),self.l_consent.get(),self.l_stage.get(),price,area,rooms,self.l_location.get().strip(),json.dumps(features,ensure_ascii=False)))
+        except ValueError as exc:
+            messagebox.showwarning("عدد نامعتبر",str(exc)); return
         except sqlite3.IntegrityError:
             messagebox.showwarning("تکراری","این لینک قبلاً ثبت شده است."); return
         with connect() as con:
