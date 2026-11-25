@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "leads.sqlite3"
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 
 def _utc_now() -> str:
@@ -109,6 +109,43 @@ def initialize(db_path: str | Path = DEFAULT_DB_PATH) -> None:
             )
         """)
         con.execute("CREATE INDEX IF NOT EXISTS idx_buyer_profiles_updated ON buyer_profiles(updated_at)")
+
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS interaction_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                buyer_id INTEGER,
+                lead_id INTEGER,
+                interaction_type TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                outcome TEXT NOT NULL DEFAULT '',
+                occurred_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(buyer_id) REFERENCES buyer_profiles(id) ON DELETE CASCADE,
+                FOREIGN KEY(lead_id) REFERENCES leads(id) ON DELETE CASCADE,
+                CHECK (buyer_id IS NOT NULL OR lead_id IS NOT NULL)
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                buyer_id INTEGER,
+                lead_id INTEGER,
+                title TEXT NOT NULL,
+                due_at TEXT NOT NULL,
+                priority TEXT NOT NULL DEFAULT 'normal',
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                completed_at TEXT,
+                FOREIGN KEY(buyer_id) REFERENCES buyer_profiles(id) ON DELETE CASCADE,
+                FOREIGN KEY(lead_id) REFERENCES leads(id) ON DELETE CASCADE,
+                CHECK (buyer_id IS NOT NULL OR lead_id IS NOT NULL),
+                CHECK (priority IN ('low','normal','high')),
+                CHECK (status IN ('pending','done','cancelled'))
+            )
+        """)
+        con.execute("CREATE INDEX IF NOT EXISTS idx_interactions_buyer_time ON interaction_logs(buyer_id, occurred_at DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_interactions_lead_time ON interaction_logs(lead_id, occurred_at DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_reminders_due_status ON reminders(status, due_at)")
 
         con.execute("""
             CREATE TABLE IF NOT EXISTS event_logs (
