@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "leads.sqlite3"
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 def _utc_now() -> str:
@@ -91,6 +91,24 @@ def initialize(db_path: str | Path = DEFAULT_DB_PATH) -> None:
                 "ALTER TABLE campaigns ADD COLUMN published_within_hours "
                 "INTEGER NOT NULL DEFAULT 168"
             )
+
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS buyer_profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                public_contact TEXT NOT NULL DEFAULT '',
+                max_budget INTEGER,
+                min_area REAL,
+                max_area REAL,
+                rooms INTEGER,
+                location TEXT NOT NULL DEFAULT '',
+                required_features_json TEXT NOT NULL DEFAULT '[]',
+                notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        con.execute("CREATE INDEX IF NOT EXISTS idx_buyer_profiles_updated ON buyer_profiles(updated_at)")
 
         con.execute("""
             CREATE TABLE IF NOT EXISTS event_logs (
