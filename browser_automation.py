@@ -74,6 +74,20 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
     if is_challenge_page(page):
         return AutomationSummary(0, "challenge", "محدودیت یا کپچا دیده شد؛ ادامه متوقف شد.")
     urls = collect_visible_listing_urls(page, max_listings)
+    # با پیمایش دیداری صفحه، کارت‌های بعدی بارگذاری می‌شوند؛ سقف تلاش محدود است.
+    scroll_attempts = 0
+    while len(urls) < max_listings and scroll_attempts < 8 and hasattr(page, "mouse"):
+        try:
+            page.mouse.wheel(0, 650)
+            page.wait_for_timeout(700)
+            for candidate in collect_visible_listing_urls(page, max_listings):
+                if candidate not in urls:
+                    urls.append(candidate)
+                    if len(urls) >= max_listings:
+                        break
+        except Exception:
+            break
+        scroll_attempts += 1
     if not urls:
         return AutomationSummary(0, "no_results", "کارت آگهی قابل پیمایش پیدا نشد؛ کنترل مرورگر در اختیار شماست.")
 
