@@ -5,7 +5,7 @@ $Version = (Get-Content (Join-Path $ProjectRoot "VERSION") -Raw).Trim()
 $Setup = Join-Path $ProjectRoot "dist\AgentDivar-Setup-$Version-x64.exe"
 $InstallDir = Join-Path $env:LOCALAPPDATA "Programs\AgentDivar"
 $DataDir = Join-Path $env:LOCALAPPDATA "AgentDivar\data"
-$StartMenuLink = Join-Path ([Environment]::GetFolderPath("Programs")) "Agent Divar\Agent Divar.lnk"
+$StartMenuLink = Join-Path ([Environment]::GetFolderPath("Programs")) "Agent Divar.lnk"
 $DesktopLink = Join-Path ([Environment]::GetFolderPath("Desktop")) "Agent Divar.lnk"
 $LogDir = Join-Path $ProjectRoot "artifacts\windows-e2e"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
