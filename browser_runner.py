@@ -116,6 +116,16 @@ def main(url=None, category="", keywords="", campaign_id=None, city=""):
             except PlaywrightError as exc:
                 print(f"بارگذاری خودکار صفحه ناموفق بود؛ مرورگر باز می‌ماند: {exc}")
             write_status("running")
+            message_template = ""
+            if campaign_id is not None:
+                with connect(DB) as con:
+                    campaign = con.execute(
+                        "SELECT message_template FROM campaigns WHERE id=?",
+                        (campaign_id,),
+                    ).fetchone()
+                if campaign:
+                    message_template = campaign["message_template"] or ""
+
             contact_observations = []
 
             def observe_visible_contact(listing_page, card):
@@ -149,6 +159,7 @@ def main(url=None, category="", keywords="", campaign_id=None, city=""):
                                 DB, lead_id=int(lead["id"]),
                                 contact_value=observation["phone"],
                                 chat_available=observation["chat_available"],
+                                message_draft=message_template,
                             )
                             queued += 1
                         except (ValueError, PermissionError):
