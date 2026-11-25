@@ -9,10 +9,9 @@ import os
 from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
+from app_paths import BROWSER_PROFILE_PATH as PROFILE, BROWSER_STATUS_PATH as STATUS_FILE, ensure_data_dirs
 
-ROOT = Path(__file__).resolve().parent
-PROFILE = ROOT / "data" / "browser-profile"
-STATUS_FILE = ROOT / "data" / "browser-session.json"
+ensure_data_dirs()
 DEFAULT_URL = "https://divar.ir"
 POLL_INTERVAL_SECONDS = 0.25
 
@@ -74,8 +73,8 @@ def wait_for_browser_close(context, sleep=time.sleep):
         sleep(POLL_INTERVAL_SECONDS)
 
 
-def main():
-    url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_URL
+def main(url=None):
+    url = url or (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_URL)
     write_status("starting")
     with sync_playwright() as playwright:
         context = launch_browser(playwright)
