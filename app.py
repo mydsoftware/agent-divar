@@ -24,6 +24,7 @@ from media_tab import PropertyMediaTab
 from backup_tab import BackupTab
 from settings_manager import load_settings
 from settings_tab import SettingsTab
+from version import __version__
 from app_paths import (
     RESOURCE_DIR as ROOT, DATA_DIR as DATA, DATABASE_PATH as DB,
     SETTINGS_PATH as SETTINGS_FILE, BROWSER_STATUS_PATH as BROWSER_STATUS,
@@ -57,7 +58,7 @@ def connect():
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("مدیریت سرنخ دیوار | نسخه پایه")
+        self.title(f"مدیریت سرنخ دیوار | نسخه {__version__}")
         self.geometry("1180x760")
         self.minsize(980, 650)
         self.settings = load_settings(SETTINGS_FILE)
