@@ -2,6 +2,7 @@
 """مدیریت سرنخ‌های مجاز و رضایت‌محور دیوار — نسخه پایه ویندوز"""
 from __future__ import annotations
 import sqlite3
+import json
 import webbrowser
 import subprocess
 import sys
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 DATA.mkdir(exist_ok=True)
 DB = DATA / "leads.sqlite3"
+BROWSER_STATUS = DATA / "browser-session.json"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS campaigns (
@@ -197,13 +199,18 @@ class App(tk.Tk):
         if keywords:url += f"?q={quote_plus(keywords)}"
         runner=ROOT / "browser_runner.py"
         if self.browser_process and self.browser_process.poll() is None:
-            # هنگام بستن پنجره، runner ممکن است چند لحظه برای پاک‌سازی فرصت بخواهد.
-            try:
-                self.browser_process.wait(timeout=1.5)
-            except subprocess.TimeoutExpired:
-                pass
+            status = self._read_browser_status()
+            if status and status.get("pid") == self.browser_process.pid and status.get("state") in ("closing", "closed"):
+                # پنجره بسته شده اما runner در پاک‌سازی گیر کرده است؛ فقط در این حالت
+                # درخت پردازش متعلق به همین runner خاتمه داده می‌شود.
+                self._terminate_browser_tree()
+            else:
+                try:
+                    self.browser_process.wait(timeout=1.5)
+                except subprocess.TimeoutExpired:
+                    pass
             if self.browser_process.poll() is None:
-                messagebox.showinfo("مرورگر فعال است","فرآیند مرورگر هنوز فعال است. اگر پنجره‌ای باز نمی‌بینید، یک‌بار برنامه را ببندید و دوباره اجرا کنید.")
+                messagebox.showinfo("مرورگر فعال است","مرورگر هنوز باز است. ابتدا پنجره مرورگر را ببندید و چند لحظه صبر کنید.")
                 return
             self.browser_process = None
         try:
@@ -211,6 +218,37 @@ class App(tk.Tk):
             messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.")
         except Exception as exc:
             messagebox.showerror("خطای اجرا",f"اجرای مرورگر ناموفق بود:\\n{exc}")
+
+    def _read_browser_status(self):
+        try:
+            return json.loads(BROWSER_STATUS.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            return None
+
+    def _terminate_browser_tree(self):
+        process = self.browser_process
+        if not process or process.poll() is not None:
+            return
+        try:
+            if sys.platform == "win32":
+                subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                    check=False,
+                )
+            else:
+                process.terminate()
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                process.terminate()
+            except OSError:
+                pass
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            pass
 
     def on_close(self):
         if self.browser_process and self.browser_process.poll() is None:
