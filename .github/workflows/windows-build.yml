@@ -5,6 +5,7 @@ on:
     paths:
       - "app.py"
       - "app_paths.py"
+      - "tests/test_app_paths.py"
       - "browser_runner.py"
       - "AgentDivar.spec"
       - "build_windows.ps1"

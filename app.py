@@ -37,7 +37,17 @@ if getattr(sys, "frozen", False):
     if sys.stderr is None:
         sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
-ensure_data_dirs()
+try:
+    ensure_data_dirs()
+except Exception as exc:
+    if getattr(sys, "frozen", False):
+        messagebox.showerror(
+            "خطا در انتقال اطلاعات",
+            "انتقال اطلاعات نسخه قبلی انجام نشد. فایل‌های قدیمی دست‌نخورده باقی مانده‌اند. "
+            "پوشه data را بررسی کنید یا از پشتیبان استفاده کنید.\n\n"
+            f"جزئیات: {type(exc).__name__}",
+        )
+    raise
 
 def connect():
     """اتصال سازگار با نسخه‌های قبلی از طریق لایه ذخیره‌سازی مرکزی."""
