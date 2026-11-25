@@ -17,6 +17,7 @@ from openpyxl.utils import get_column_letter
 from storage import connect as open_database, initialize as initialize_database, record_event
 from search_engine import SearchValidationError, build_search_plan
 from listing_analyzer import Listing, BuyerCriteria, analyze_listing
+from followup_manager import FollowUpTab
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
@@ -64,6 +65,7 @@ class App(tk.Tk):
         self._build_campaign_tab(); self._build_leads_tab()
         self.buyer_tab=ttk.Frame(self.tabs,padding=12); self.tabs.add(self.buyer_tab,text="مشتریان خریدار")
         self._build_buyers_tab()
+        self.followup_tab=FollowUpTab(self.tabs, DB); self.tabs.add(self.followup_tab,text="تعاملات و یادآورها")
         footer=ttk.Label(self,text="یادآوری: پیام تبلیغاتی ناخواسته در چت دیوار ارسال نکنید. پیام‌رسانی فقط در جریان مجاز و با رضایت/درخواست مخاطب انجام شود.",foreground="#9a3412",padding=8)
         footer.pack(fill="x")
 
