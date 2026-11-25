@@ -14,7 +14,6 @@ from playwright.sync_api import sync_playwright
 from app_paths import (BROWSER_PROFILE_PATH as PROFILE, BROWSER_STATUS_PATH as STATUS_FILE,
                         DATABASE_PATH as DB, ensure_data_dirs)
 from browser_automation import run_visible_search
-from lead_matching import match_listing
 from storage import connect, initialize
 
 ensure_data_dirs()
@@ -87,7 +86,6 @@ def save_matched_listings(listings, *, category="", city="", campaign_id=None):
     saved = 0
     with connect(DB) as con:
         for item in listings:
-            result = match_listing(item["title"], category, "")
             try:
                 cursor = con.execute(
                     """INSERT OR IGNORE INTO leads
@@ -96,7 +94,7 @@ def save_matched_listings(listings, *, category="", city="", campaign_id=None):
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')""",
                     (campaign_id, item["url"], item["title"], category, city,
                      category or "عمومی", datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                     result.score, result.reason),
+                     item.get("match_score"), item.get("match_reason", "")),
                 )
                 saved += cursor.rowcount
             except sqlite3.IntegrityError:
