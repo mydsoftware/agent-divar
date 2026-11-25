@@ -72,6 +72,12 @@ class StorageTests(unittest.TestCase):
             columns = {row["name"] for row in con.execute("PRAGMA table_info(leads)")}
         self.assertTrue({"price", "area", "rooms", "location", "features_json"} <= columns)
 
+    def test_buyer_profiles_table_is_created(self):
+        storage.initialize(self.db)
+        with storage.connect(self.db) as con:
+            columns = {row["name"] for row in con.execute("PRAGMA table_info(buyer_profiles)")}
+        self.assertTrue({"name", "max_budget", "min_area", "max_area", "rooms", "location", "required_features_json"} <= columns)
+
     def test_initialize_is_idempotent(self):
         storage.initialize(self.db)
         storage.initialize(self.db)

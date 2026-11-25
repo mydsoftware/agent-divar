@@ -62,6 +62,8 @@ class App(tk.Tk):
         self.camp_tab=ttk.Frame(self.tabs,padding=12); self.tabs.add(self.camp_tab,text="کمپین‌ها و جستجو")
         self.lead_tab=ttk.Frame(self.tabs,padding=12); self.tabs.add(self.lead_tab,text="بانک سرنخ‌ها")
         self._build_campaign_tab(); self._build_leads_tab()
+        self.buyer_tab=ttk.Frame(self.tabs,padding=12); self.tabs.add(self.buyer_tab,text="مشتریان خریدار")
+        self._build_buyers_tab()
         footer=ttk.Label(self,text="یادآوری: پیام تبلیغاتی ناخواسته در چت دیوار ارسال نکنید. پیام‌رسانی فقط در جریان مجاز و با رضایت/درخواست مخاطب انجام شود.",foreground="#9a3412",padding=8)
         footer.pack(fill="x")
 
@@ -95,6 +97,131 @@ class App(tk.Tk):
         self.campaign_tree.pack(fill="both",expand=True)
         self.campaign_tree.bind("<<TreeviewSelect>>",self.select_campaign)
         ttk.Label(f,text="جستجو در مرورگر به‌صورت هدایت به صفحه دیوار انجام می‌شود؛ ثبت اطلاعات آگهی در این نسخه با ورود دستی و بدون استخراج خودکار اطلاعات شخصی است.",foreground="#475569").pack(anchor="e")
+
+
+    def _build_buyers_tab(self):
+        f=self.buyer_tab
+        form=ttk.LabelFrame(f,text="پروفایل خریدار",padding=12); form.pack(fill="x")
+        self.b_name=tk.StringVar(); self.b_contact=tk.StringVar(); self.b_budget_saved=tk.StringVar()
+        self.b_min_saved=tk.StringVar(); self.b_max_saved=tk.StringVar(); self.b_rooms_saved=tk.StringVar()
+        self.b_location_saved=tk.StringVar(); self.b_features_saved=tk.StringVar()
+        fields=[("نام خریدار",self.b_name),("راه تماس مجاز",self.b_contact),("سقف بودجه",self.b_budget_saved),
+                ("حداقل متراژ",self.b_min_saved),("حداکثر متراژ",self.b_max_saved),("تعداد اتاق",self.b_rooms_saved),
+                ("محدوده",self.b_location_saved),("امکانات (با ویرگول)",self.b_features_saved)]
+        for i,(label,var) in enumerate(fields):
+            rr,cc=divmod(i,2); cell=ttk.Frame(form); cell.grid(row=rr,column=cc,sticky="ew",padx=5,pady=4)
+            ttk.Label(cell,text=label).pack(anchor="e"); ttk.Entry(cell,textvariable=var,justify="right").pack(fill="x")
+        form.columnconfigure(0,weight=1); form.columnconfigure(1,weight=1)
+        ttk.Label(form,text="یادداشت").grid(row=4,column=0,columnspan=2,sticky="e")
+        self.b_notes=tk.Text(form,height=2); self.b_notes.grid(row=5,column=0,columnspan=2,sticky="ew")
+        actions=ttk.Frame(form); actions.grid(row=6,column=0,columnspan=2,sticky="e",pady=6)
+        ttk.Button(actions,text="ذخیره",command=self.save_buyer).pack(side="right",padx=4)
+        ttk.Button(actions,text="حذف",command=self.delete_buyer).pack(side="right",padx=4)
+        ttk.Button(actions,text="اعمال معیارها در تحلیل",command=self.apply_buyer).pack(side="right",padx=4)
+        self.buyer_tree=ttk.Treeview(f,columns=("id","name","budget","area","rooms","location"),show="headings")
+        for col,title,width in [("id","شناسه",55),("name","نام",180),("budget","بودجه",140),("area","متراژ",130),("rooms","اتاق",70),("location","محدوده",180)]:
+            self.buyer_tree.heading(col,text=title); self.buyer_tree.column(col,width=width,anchor="e")
+        self.buyer_tree.pack(fill="both",expand=True,pady=10)
+        self.buyer_tree.bind("<<TreeviewSelect>>",self.select_buyer)
+        self.refresh_buyers()
+
+    def save_buyer(self):
+        if not self.b_name.get().strip():
+            messagebox.showwarning("ورودی ناقص","نام خریدار الزامی است."); return
+        try:
+            budget=self._optional_int(self.b_budget_saved.get(),"بودجه")
+            minimum=self._optional_float(self.b_min_saved.get(),"حداقل متراژ")
+            maximum=self._optional_float(self.b_max_saved.get(),"حداکثر متراژ")
+            rooms=self._optional_int(self.b_rooms_saved.get(),"اتاق")
+            if minimum is not None and maximum is not None and minimum>maximum:
+                raise ValueError("حداقل متراژ از حداکثر متراژ بیشتر است.")
+        except ValueError as exc:
+            messagebox.showwarning("مقدار نامعتبر",str(exc)); return
+        features=[x.strip() for x in self.b_features_saved.get().split(",") if x.strip()]
+        values=(self.b_name.get().strip(),self.b_contact.get().strip(),budget,minimum,maximum,rooms,
+                self.b_location_saved.get().strip(),json.dumps(features,ensure_ascii=False),
+                self.b_notes.get("1.0","end").strip())
+        selected=self.buyer_tree.selection()
+        with connect() as con:
+            if selected:
+                buyer_id=int(self.buyer_tree.item(selected[0],"values")[0])
+                con.execute("""UPDATE buyer_profiles SET name=?,public_contact=?,max_budget=?,min_area=?,max_area=?,
+                    rooms=?,location=?,required_features_json=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?""",values+(buyer_id,))
+            else:
+                con.execute("""INSERT INTO buyer_profiles(name,public_contact,max_budget,min_area,max_area,rooms,
+                    location,required_features_json,notes) VALUES(?,?,?,?,?,?,?,?,?)""",values)
+        record_event(DB,"buyer.saved",entity_type="buyer",message="پروفایل خریدار ذخیره شد")
+        self.refresh_buyers()
+
+    def refresh_buyers(self):
+        for item in self.buyer_tree.get_children(): self.buyer_tree.delete(item)
+        with connect() as con:
+            rows=con.execute("SELECT id,name,max_budget,min_area,max_area,rooms,location FROM buyer_profiles ORDER BY updated_at DESC,id DESC").fetchall()
+        for row in rows:
+            area=f"{row['min_area'] if row['min_area'] is not None else '—'} تا {row['max_area'] if row['max_area'] is not None else '—'}"
+            self.buyer_tree.insert("","end",values=(row["id"],row["name"],row["max_budget"] if row["max_budget"] is not None else "—",area,row["rooms"] if row["rooms"] is not None else "—",row["location"] or "—"))
+
+    def select_buyer(self,_event=None):
+        selected=self.buyer_tree.selection()
+        if not selected:return
+        buyer_id=int(self.buyer_tree.item(selected[0],"values")[0])
+        with connect() as con: row=con.execute("SELECT * FROM buyer_profiles WHERE id=?",(buyer_id,)).fetchone()
+        if row is None:return
+        self.b_name.set(row["name"]); self.b_contact.set(row["public_contact"])
+        self.b_budget_saved.set(row["max_budget"] if row["max_budget"] is not None else "")
+        self.b_min_saved.set(row["min_area"] if row["min_area"] is not None else "")
+        self.b_max_saved.set(row["max_area"] if row["max_area"] is not None else "")
+        self.b_rooms_saved.set(row["rooms"] if row["rooms"] is not None else "")
+        self.b_location_saved.set(row["location"])
+        self.b_features_saved.set(", ".join(json.loads(row["required_features_json"] or "[]")))
+        self.b_notes.delete("1.0","end"); self.b_notes.insert("1.0",row["notes"])
+
+    def delete_buyer(self):
+        selected=self.buyer_tree.selection()
+        if not selected:return
+        if not messagebox.askyesno("حذف خریدار","پروفایل انتخاب‌شده حذف شود؟"):return
+        buyer_id=int(self.buyer_tree.item(selected[0],"values")[0])
+        with connect() as con: con.execute("DELETE FROM buyer_profiles WHERE id=?",(buyer_id,))
+        record_event(DB,"buyer.deleted",entity_type="buyer",entity_id=buyer_id,message="پروفایل خریدار حذف شد")
+        self.refresh_buyers()
+
+    def apply_buyer(self):
+        selected=self.buyer_tree.selection()
+        if not selected:
+            messagebox.showinfo("انتخاب خریدار","ابتدا خریدار را انتخاب کنید."); return
+        self.select_buyer()
+        self.b_budget.set(self.b_budget_saved.get()); self.b_min_area.set(self.b_min_saved.get())
+        self.b_max_area.set(self.b_max_saved.get()); self.b_rooms.set(self.b_rooms_saved.get())
+        self.b_location.set(self.b_location_saved.get()); self.b_features.set(self.b_features_saved.get())
+        self.tabs.select(self.lead_tab)
+
+    def compare_selected_listings(self):
+        selected=self.lead_tree.selection()
+        if len(selected)<2:
+            messagebox.showinfo("انتخاب آگهی","حداقل دو آگهی را با Ctrl انتخاب کنید."); return
+        try:
+            criteria=BuyerCriteria(max_budget=self._optional_int(self.b_budget.get(),"بودجه"),
+                min_area=self._optional_float(self.b_min_area.get(),"حداقل متراژ"),
+                max_area=self._optional_float(self.b_max_area.get(),"حداکثر متراژ"),
+                rooms=self._optional_int(self.b_rooms.get(),"اتاق"),location=self.b_location.get().strip(),
+                required_features=tuple(x.strip() for x in self.b_features.get().split(",") if x.strip()))
+            ranked=[]
+            with connect() as con:
+                for item in selected:
+                    lead_id=int(self.lead_tree.item(item,"values")[0])
+                    row=con.execute("SELECT title,price,area,rooms,location,features_json FROM leads WHERE id=?",(lead_id,)).fetchone()
+                    if row is None:continue
+                    listing=Listing(title=row["title"],price=row["price"],area=row["area"],rooms=row["rooms"],
+                        location=row["location"] or "",features=tuple(json.loads(row["features_json"] or "[]")))
+                    result=analyze_listing(listing,criteria)
+                    ranked.append((result.score,listing.title,result.status))
+        except (ValueError,TypeError,json.JSONDecodeError) as exc:
+            messagebox.showwarning("معیار نامعتبر",str(exc)); return
+        ranked.sort(key=lambda x:(x[0] is not None,x[0] if x[0] is not None else -1),reverse=True)
+        lines=["رتبه‌بندی آگهی‌های انتخاب‌شده:"]
+        for i,(score,title,status) in enumerate(ranked,1):
+            lines.append(f"{i}. {title} — {score if score is not None else 'اطلاعات ناکافی'} — {status}")
+        self.analysis_result.configure(text="\n".join(lines))
 
     def _build_leads_tab(self):
         f=self.lead_tab
@@ -133,11 +260,12 @@ class App(tk.Tk):
         for cc in range(3): criteria.columnconfigure(cc,weight=1)
         analysis_actions=ttk.Frame(criteria); analysis_actions.grid(row=2,column=0,columnspan=3,sticky="e",pady=4)
         ttk.Button(analysis_actions,text="تحلیل آگهی انتخاب‌شده",command=self.analyze_selected_listing).pack(side="right",padx=4)
+        ttk.Button(analysis_actions,text="مقایسه چند آگهی",command=self.compare_selected_listings).pack(side="right",padx=4)
         self.analysis_result=ttk.Label(criteria,text="برای تحلیل، یک آگهی انتخاب و معیارهای خریدار را وارد کنید.",justify="right",wraplength=900)
         self.analysis_result.grid(row=3,column=0,columnspan=3,sticky="e",padx=5,pady=5)
         listing=ttk.LabelFrame(f,text="سرنخ‌های ثبت‌شده",padding=8); listing.pack(fill="both",expand=True,pady=10)
         cols=("id","title","category","city","contact","consent","stage","url")
-        self.lead_tree=ttk.Treeview(listing,columns=cols,show="headings")
+        self.lead_tree=ttk.Treeview(listing,columns=cols,show="headings",selectmode="extended")
         titles={"id":"شناسه","title":"عنوان آگهی","category":"حوزه","city":"شهر","contact":"راه تماس","consent":"رضایت","stage":"وضعیت","url":"لینک"}
         widths={"id":55,"title":220,"category":100,"city":90,"contact":140,"consent":115,"stage":110,"url":300}
         for col in cols:
