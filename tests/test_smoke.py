@@ -120,7 +120,7 @@ class SmokeTests(unittest.TestCase):
     def test_app_has_live_browser_entrypoint(self):
         source = APP.read_text(encoding="utf-8")
         self.assertIn("browser_runner.py", source)
-        self.assertIn("اجرای زنده در مرورگر ویندوز", source)
+        self.assertIn("اجرای خودکار در مرورگر ویندوز", source)
         self.assertIn("subprocess.Popen", source)
 
     def test_database_schema_contains_campaigns_and_leads(self):
