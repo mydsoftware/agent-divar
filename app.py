@@ -383,11 +383,15 @@ class App(tk.Tk):
                 return
             self.browser_process = None
         try:
+            campaign_args = ["--category", self.c_category.get().strip(),
+                             "--keywords", self.c_keywords.get().strip(),
+                             "--city", self.c_city.get().strip(),
+                             "--campaign-id", str(self.campaign_id or "")]
             if getattr(sys, "frozen", False):
-                command = [sys.executable, "--browser-runner", url]
+                command = [sys.executable, "--browser-runner", url, *campaign_args]
                 working_directory = str(Path(sys.executable).resolve().parent)
             else:
-                command = [sys.executable, str(runner), url]
+                command = [sys.executable, str(runner), url, *campaign_args]
                 working_directory = str(ROOT)
             self.browser_process=subprocess.Popen(command,cwd=working_directory)
             messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود و آگهی‌های صفحه به‌ترتیب مرور خواهند شد. اطلاعات تماس یا پیام‌ها استخراج نمی‌شوند.\\n\\n" + " ".join(plan.notes))
