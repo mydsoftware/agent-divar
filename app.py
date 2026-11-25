@@ -114,6 +114,7 @@ class App(tk.Tk):
         actions=ttk.Frame(form); actions.grid(row=5,column=0,columnspan=2,sticky="e",pady=8)
         ttk.Button(actions,text="ذخیره کمپین",command=self.save_campaign).pack(side="right",padx=4)
         ttk.Button(actions,text="اجرای زنده در مرورگر ویندوز",command=self.open_search).pack(side="right",padx=4)
+        ttk.Button(actions,text="بستن مرورگر",command=self.close_browser).pack(side="right",padx=4)
         ttk.Button(actions,text="پاک‌کردن فرم",command=self.clear_campaign).pack(side="right",padx=4)
         lower=ttk.LabelFrame(f,text="کمپین‌های ذخیره‌شده",padding=8); lower.pack(fill="both",expand=True,pady=12)
         self.campaign_tree=ttk.Treeview(lower,columns=("id","name","category","city","age_filter","keywords"),show="headings",height=8)
@@ -218,6 +219,41 @@ class App(tk.Tk):
             messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.")
         except Exception as exc:
             messagebox.showerror("خطای اجرا",f"اجرای مرورگر ناموفق بود:\\n{exc}")
+
+    def close_browser(self):
+        """مرورگر و runner متعلق به همین اجرای برنامه را متوقف و نشست را آزاد می‌کند."""
+        process = self.browser_process
+        if process is None:
+            messagebox.showinfo("وضعیت مرورگر", "نشست فعالی از این برنامه ثبت نشده است.")
+            return
+
+        if process.poll() is None:
+            self._terminate_browser_tree()
+
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            messagebox.showerror(
+                "خطا در بستن مرورگر",
+                "پردازش مرورگر هنوز بسته نشده است. یک بار دیگر دکمه بستن مرورگر را بزنید.",
+            )
+            return
+
+        self.browser_process = None
+        try:
+            BROWSER_STATUS.write_text(
+                json.dumps(
+                    {"pid": process.pid, "state": "closed", "updated_at": __import__("time").time()},
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
+        messagebox.showinfo(
+            "مرورگر بسته شد",
+            "نشست قبلی بسته و آزاد شد. اکنون می‌توانید دوباره اجرای زنده را بزنید.",
+        )
 
     def _read_browser_status(self):
         try:
