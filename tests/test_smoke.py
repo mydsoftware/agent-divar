@@ -1,27 +1,62 @@
 # -*- coding: utf-8 -*-
-"""آزمون‌های پایه بدون نیاز به پنجره گرافیکی."""
+"""آزمون‌های پایه و رگرسیون بدون نیاز به پنجره گرافیکی."""
 import ast
+import importlib.util
 from pathlib import Path
 import unittest
 
-APP = Path(__file__).resolve().parents[1] / "app.py"
-RUNNER = Path(__file__).resolve().parents[1] / "browser_runner.py"
+ROOT = Path(__file__).resolve().parents[1]
+APP = ROOT / "app.py"
+RUNNER = ROOT / "browser_runner.py"
+
+
+def load_runner():
+    spec = importlib.util.spec_from_file_location("browser_runner", RUNNER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 
 class SmokeTests(unittest.TestCase):
     def test_app_syntax(self):
         ast.parse(APP.read_text(encoding="utf-8"))
 
-    def test_live_browser_runner_syntax_and_features(self):
+    def test_runner_syntax_and_visible_persistent_configuration(self):
         source = RUNNER.read_text(encoding="utf-8")
         ast.parse(source)
-        self.assertIn("headless=False", source)
+        self.assertIn('headless": False', source)
         self.assertIn("launch_persistent_context", source)
-        self.assertIn("channel=\"msedge\"", source)
+        self.assertIn('channel="msedge"', source)
+        self.assertIn("user_data_dir", source)
+        self.assertIn("context.pages", source)
+        self.assertNotIn('wait_for_event("close", timeout=0)', source)
+
+    def test_runner_waits_until_all_pages_are_closed(self):
+        runner = load_runner()
+
+        class FakeContext:
+            def __init__(self):
+                self.pages = [object(), object()]
+
+        context = FakeContext()
+        sleeps = []
+
+        def fake_sleep(interval):
+            sleeps.append(interval)
+            if len(sleeps) == 1:
+                context.pages.pop()
+            else:
+                context.pages.clear()
+
+        runner.wait_for_browser_close(context, sleep=fake_sleep)
+        self.assertEqual(len(sleeps), 2)
+        self.assertTrue(all(value == runner.POLL_INTERVAL_SECONDS for value in sleeps))
 
     def test_app_has_live_browser_entrypoint(self):
         source = APP.read_text(encoding="utf-8")
         self.assertIn("browser_runner.py", source)
         self.assertIn("اجرای زنده در مرورگر ویندوز", source)
+        self.assertIn("subprocess.Popen", source)
 
     def test_database_schema_contains_campaigns_and_leads(self):
         source = APP.read_text(encoding="utf-8")
@@ -34,6 +69,7 @@ class SmokeTests(unittest.TestCase):
         self.assertIn("۱ روز گذشته", source)
         self.assertIn("۳ روز گذشته", source)
         self.assertIn("۷ روز گذشته", source)
+
 
 if __name__ == "__main__":
     unittest.main()
