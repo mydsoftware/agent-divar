@@ -6,11 +6,15 @@ import sys
 import time
 import json
 import os
+import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
-from app_paths import BROWSER_PROFILE_PATH as PROFILE, BROWSER_STATUS_PATH as STATUS_FILE, ensure_data_dirs
+from app_paths import (BROWSER_PROFILE_PATH as PROFILE, BROWSER_STATUS_PATH as STATUS_FILE,
+                        DATABASE_PATH as DB, ensure_data_dirs)
 from browser_automation import run_visible_search
+from storage import connect, initialize
 
 ensure_data_dirs()
 DEFAULT_URL = "https://divar.ir"
@@ -74,7 +78,31 @@ def wait_for_browser_close(context, sleep=time.sleep):
         sleep(POLL_INTERVAL_SECONDS)
 
 
-def main(url=None):
+def save_matched_listings(listings, *, category="", city="", campaign_id=None):
+    """ذخیره عنوان و URL عمومی آگهی‌های منطبق؛ بدون اطلاعات تماس."""
+    if not listings:
+        return 0
+    initialize(DB)
+    saved = 0
+    with connect(DB) as con:
+        for item in listings:
+            try:
+                cursor = con.execute(
+                    """INSERT OR IGNORE INTO leads
+                       (campaign_id, ad_url, title, category, city, listing_type,
+                        discovered_at, match_score, match_reason, attributes_json)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')""",
+                    (campaign_id, item["url"], item["title"], category, city,
+                     category or "عمومی", datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                     item.get("match_score"), item.get("match_reason", "")),
+                )
+                saved += cursor.rowcount
+            except sqlite3.IntegrityError:
+                continue
+    return saved
+
+
+def main(url=None, category="", keywords="", campaign_id=None, city=""):
     url = url or (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_URL)
     write_status("starting")
     with sync_playwright() as playwright:
@@ -87,8 +115,10 @@ def main(url=None):
             except PlaywrightError as exc:
                 print(f"بارگذاری خودکار صفحه ناموفق بود؛ مرورگر باز می‌ماند: {exc}")
             write_status("running")
-            summary = run_visible_search(page)
-            print(f"گزارش مرور خودکار: {summary.status} | {summary.message}")
+            summary = run_visible_search(page, category=category, keywords=keywords)
+            saved = save_matched_listings(summary.listings, category=category, city=city,
+                                          campaign_id=campaign_id)
+            print(f"گزارش مرور خودکار: {summary.status} | {summary.message} | ثبت محلی: {saved}")
             write_status("running")
             print("مرورگر زنده آماده است؛ برای پایان، همه پنجره‌های آن را ببندید.")
             wait_for_browser_close(context)
@@ -105,8 +135,18 @@ def main(url=None):
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="مرور آگهی‌های منطبق دیوار")
+    parser.add_argument("url", nargs="?", default=DEFAULT_URL)
+    parser.add_argument("--category", default="")
+    parser.add_argument("--keywords", default="")
+    parser.add_argument("--city", default="")
+    parser.add_argument("--campaign-id", default="")
+    args = parser.parse_args()
     try:
-        main()
+        main(args.url, category=args.category, keywords=args.keywords,
+             campaign_id=int(args.campaign_id) if args.campaign_id.isdigit() else None,
+             city=args.city)
     except (PlaywrightError, RuntimeError) as exc:
         print(f"خطای اجرای مرورگر: {exc}", file=sys.stderr)
         raise SystemExit(1)

@@ -28,10 +28,10 @@ class PropertyMediaTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_schema_v6_preserves_existing_lead_and_creates_media_table(self):
+    def test_schema_v7_preserves_existing_lead_and_creates_media_table(self):
         storage.initialize(self.db)
         with storage.connect(self.db) as con:
-            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 6)
+            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 7)
             self.assertEqual(con.execute("SELECT title FROM leads WHERE id=1").fetchone()[0],
                              "ملک آزمایشی")
             self.assertIsNotNone(con.execute(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from urllib.parse import urlparse
+from lead_matching import match_listing
 import time
 
 DIVAR_HOSTS = {"divar.ir", "www.divar.ir"}
@@ -15,6 +16,7 @@ class AutomationSummary:
     visited: int
     status: str
     message: str
+    listings: tuple[dict, ...] = ()
 
 
 def is_divar_url(url: str) -> bool:
@@ -63,8 +65,38 @@ def collect_visible_listing_urls(page, limit: int = 20) -> list[str]:
     return urls
 
 
+def collect_visible_listing_cards(page, limit: int = 20) -> list[dict]:
+    """عنوان و قیمت عمومی کارت‌های قابل مشاهده را بدون اطلاعات تماس می‌خواند."""
+    cards = []
+    try:
+        links = page.locator('a[href*="/v/"]')
+        count = min(links.count(), limit * 4)
+        for index in range(count):
+            try:
+                link = links.nth(index)
+                if not link.is_visible():
+                    continue
+                href = link.get_attribute("href")
+                title = link.inner_text(timeout=1000).strip()
+                if not href or not title:
+                    continue
+                url = page.url.split("/s/")[0] + href if href.startswith("/") else href
+                if not is_divar_url(url) or LISTING_PATH_MARKER not in urlparse(url).path:
+                    continue
+                if any(item["url"] == url for item in cards):
+                    continue
+                cards.append({"url": url, "title": title[:300], "price": ""})
+                if len(cards) >= limit:
+                    break
+            except Exception:
+                continue
+    except Exception:
+        return []
+    return cards
+
+
 def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2.0,
-                       sleep=time.sleep) -> AutomationSummary:
+                       category: str = "", keywords: str = "", sleep=time.sleep) -> AutomationSummary:
     """آگهی‌ها را در مرورگر قابل‌مشاهده یکی‌یکی باز و به نتایج بازمی‌گردد.
 
     متن آگهی، شماره تماس، پیام‌ها و داده‌های شخصی خوانده یا ذخیره نمی‌شوند.
@@ -73,16 +105,28 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
         return AutomationSummary(0, "unsupported_page", "صفحه فعلی متعلق به دیوار نیست.")
     if is_challenge_page(page):
         return AutomationSummary(0, "challenge", "محدودیت یا کپچا دیده شد؛ ادامه متوقف شد.")
-    urls = collect_visible_listing_urls(page, max_listings)
+    cards = collect_visible_listing_cards(page, max_listings)
+    matched_cards = []
+    for card in cards:
+        result = match_listing(card["title"], category, keywords)
+        if not (category.strip() or keywords.strip()) or result.matched:
+            card["match_score"] = result.score
+            card["match_reason"] = result.reason
+            matched_cards.append(card)
+    urls = [card["url"] for card in matched_cards]
     # با پیمایش دیداری صفحه، کارت‌های بعدی بارگذاری می‌شوند؛ سقف تلاش محدود است.
     scroll_attempts = 0
     while len(urls) < max_listings and scroll_attempts < 8 and hasattr(page, "mouse"):
         try:
             page.mouse.wheel(0, 650)
             page.wait_for_timeout(700)
-            for candidate in collect_visible_listing_urls(page, max_listings):
-                if candidate not in urls:
-                    urls.append(candidate)
+            for card in collect_visible_listing_cards(page, max_listings):
+                result = match_listing(card["title"], category, keywords)
+                if (not (category.strip() or keywords.strip()) or result.matched) and card["url"] not in urls:
+                    card["match_score"] = result.score
+                    card["match_reason"] = result.reason
+                    matched_cards.append(card)
+                    urls.append(card["url"])
                     if len(urls) >= max_listings:
                         break
         except Exception:
@@ -108,4 +152,5 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
             page.wait_for_timeout(500)
         except Exception as exc:
             return AutomationSummary(visited, "paused", f"پیمایش متوقف شد: {type(exc).__name__}")
-    return AutomationSummary(visited, "completed", f"{visited} آگهی در مرورگر بازبینی شد؛ اطلاعات برای ثبت دستی در دسترس است.")
+    matched = tuple(card for card in matched_cards if card["url"] in urls)
+    return AutomationSummary(visited, "completed", f"{visited} آگهی منطبق در مرورگر بازبینی شد.", matched)

@@ -357,6 +357,9 @@ class App(tk.Tk):
         self.c_message.delete("1.0","end"); self.c_message.insert("1.0",row[4])
 
     def open_search(self):
+        if not (self.c_category.get().strip() or self.c_keywords.get().strip()):
+            messagebox.showwarning("معیار ناقص", "برای تطبیق آگهی‌ها، حوزه یا حداقل یک کلیدواژه وارد کنید.")
+            return
         try:
             plan = build_search_plan(
                 city=self.c_city.get(),
@@ -383,11 +386,15 @@ class App(tk.Tk):
                 return
             self.browser_process = None
         try:
+            campaign_args = ["--category", self.c_category.get().strip(),
+                             "--keywords", self.c_keywords.get().strip(),
+                             "--city", self.c_city.get().strip(),
+                             "--campaign-id", str(self.campaign_id or "")]
             if getattr(sys, "frozen", False):
-                command = [sys.executable, "--browser-runner", url]
+                command = [sys.executable, "--browser-runner", url, *campaign_args]
                 working_directory = str(Path(sys.executable).resolve().parent)
             else:
-                command = [sys.executable, str(runner), url]
+                command = [sys.executable, str(runner), url, *campaign_args]
                 working_directory = str(ROOT)
             self.browser_process=subprocess.Popen(command,cwd=working_directory)
             messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود و آگهی‌های صفحه به‌ترتیب مرور خواهند شد. اطلاعات تماس یا پیام‌ها استخراج نمی‌شوند.\\n\\n" + " ".join(plan.notes))
@@ -603,8 +610,18 @@ def run_self_test():
 if __name__=="__main__":
     if "--browser-runner" in sys.argv:
         from browser_runner import main as run_browser
+        import argparse
         index = sys.argv.index("--browser-runner")
-        run_browser(sys.argv[index + 1] if len(sys.argv) > index + 1 else None)
+        parser = argparse.ArgumentParser()
+        parser.add_argument("url", nargs="?", default=None)
+        parser.add_argument("--category", default="")
+        parser.add_argument("--keywords", default="")
+        parser.add_argument("--city", default="")
+        parser.add_argument("--campaign-id", default="")
+        args = parser.parse_args(sys.argv[index + 1:])
+        run_browser(args.url, category=args.category, keywords=args.keywords,
+                    city=args.city,
+                    campaign_id=int(args.campaign_id) if args.campaign_id.isdigit() else None)
     elif "--self-test" in sys.argv:
         run_self_test()
     else:
