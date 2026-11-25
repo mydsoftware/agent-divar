@@ -16,11 +16,21 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+class ClosingConnection(sqlite3.Connection):
+    """اتصال SQLite که پس از خروج از بلوک with حتماً بسته می‌شود."""
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 def connect(db_path: str | Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     """اتصال SQLite با تنظیمات یکسان؛ ساخت و مهاجرت با initialize انجام می‌شود."""
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(str(path), timeout=15)
+    con = sqlite3.connect(str(path), timeout=15, factory=ClosingConnection)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys=ON")
     con.execute("PRAGMA busy_timeout=15000")
