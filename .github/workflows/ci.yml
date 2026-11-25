@@ -5,6 +5,7 @@ on:
     paths:
       - "app.py"
       - "browser_runner.py"
+      - "storage.py"
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/ci.yml"
