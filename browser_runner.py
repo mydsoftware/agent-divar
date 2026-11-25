@@ -10,6 +10,7 @@ from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 from app_paths import BROWSER_PROFILE_PATH as PROFILE, BROWSER_STATUS_PATH as STATUS_FILE, ensure_data_dirs
+from browser_automation import run_visible_search
 
 ensure_data_dirs()
 DEFAULT_URL = "https://divar.ir"
@@ -85,6 +86,9 @@ def main(url=None):
                 print("صفحه مقصد بارگذاری شد.")
             except PlaywrightError as exc:
                 print(f"بارگذاری خودکار صفحه ناموفق بود؛ مرورگر باز می‌ماند: {exc}")
+            write_status("running")
+            summary = run_visible_search(page)
+            print(f"گزارش مرور خودکار: {summary.status} | {summary.message}")
             write_status("running")
             print("مرورگر زنده آماده است؛ برای پایان، همه پنجره‌های آن را ببندید.")
             wait_for_browser_close(context)
