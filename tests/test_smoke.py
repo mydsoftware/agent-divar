@@ -72,6 +72,26 @@ class SmokeTests(unittest.TestCase):
 
         self.assertFalse(runner.has_open_pages(FakeContext()))
 
+    def test_runner_reports_lifecycle_state_atomically(self):
+        runner = load_runner()
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            runner.STATUS_FILE = Path(directory) / "browser-session.json"
+            runner.write_status("closing")
+            status = json.loads(runner.STATUS_FILE.read_text(encoding="utf-8"))
+            self.assertEqual(status["pid"], __import__("os").getpid())
+            self.assertEqual(status["state"], "closing")
+            self.assertTrue(status["updated_at"] > 0)
+
+    def test_app_can_recover_only_a_closed_runner_tree(self):
+        source = APP.read_text(encoding="utf-8")
+        self.assertIn("_read_browser_status", source)
+        self.assertIn('_terminate_browser_tree()', source)
+        self.assertIn('status.get("state") in ("closing", "closed")', source)
+        self.assertIn('"taskkill", "/PID"', source)
+
     def test_app_has_live_browser_entrypoint(self):
         source = APP.read_text(encoding="utf-8")
         self.assertIn("browser_runner.py", source)
