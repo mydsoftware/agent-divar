@@ -56,8 +56,13 @@ def launch_browser(playwright):
 
 
 def has_open_pages(context):
-    """فقط صفحه‌هایی را زنده حساب می‌کند که واقعاً بسته نشده‌اند."""
+    """بسته‌شدن واقعی مرورگر یا همه صفحه‌ها را تشخیص می‌دهد."""
     try:
+        browser = context.browser
+        # در بعضی نسخه‌های Playwright پس از بستن آخرین پنجره،
+        # صفحه‌ها در context باقی می‌مانند اما اتصال مرورگر قطع شده است.
+        if browser is not None and not browser.is_connected():
+            return False
         return any(not page.is_closed() for page in context.pages)
     except PlaywrightError:
         return False
@@ -71,6 +76,7 @@ def wait_for_browser_close(context, sleep=time.sleep):
 
 def main():
     url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_URL
+    write_status("starting")
     with sync_playwright() as playwright:
         context = launch_browser(playwright)
         try:
