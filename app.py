@@ -175,7 +175,8 @@ class App(tk.Tk):
     def open_search(self):
         city=self.c_city.get().strip() or "iran"
         keywords=self.c_keywords.get().strip() or self.c_category.get().strip()
-        city_slug=city.lower().replace(" ","-") if city.isascii() else "iran"\n        url=f"https://divar.ir/s/{quote_plus(city_slug)}"
+        city_slug=city.lower().replace(" ","-") if city.isascii() else "iran"
+        url=f"https://divar.ir/s/{quote_plus(city_slug)}"
         if keywords:url += f"?q={quote_plus(keywords)}"
         webbrowser.open(url)
 
