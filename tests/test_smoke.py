@@ -60,6 +60,23 @@ class SmokeTests(unittest.TestCase):
         self.assertFalse(runner.has_open_pages(context))
         self.assertTrue(all(value == runner.POLL_INTERVAL_SECONDS for value in sleeps))
 
+    def test_runner_detects_disconnected_browser_even_if_pages_remain(self):
+        runner = load_runner()
+
+        class FakeBrowser:
+            def is_connected(self):
+                return False
+
+        class FakePage:
+            def is_closed(self):
+                return False
+
+        class FakeContext:
+            browser = FakeBrowser()
+            pages = [FakePage()]
+
+        self.assertFalse(runner.has_open_pages(FakeContext()))
+
     def test_runner_detects_already_closed_pages(self):
         runner = load_runner()
 
