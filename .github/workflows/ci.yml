@@ -5,7 +5,9 @@ on:
     paths:
       - "app.py"
       - "app_paths.py"
-      - "browser_runner.py"\n      - "browser_automation.py"
+      - "browser_runner.py"
+      - "browser_automation.py"
+      - "lead_matching.py"
       - "storage.py"
       - "followup_manager.py"
       - "dashboard.py"
