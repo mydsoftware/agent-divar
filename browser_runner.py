@@ -43,9 +43,17 @@ def launch_browser(playwright):
         ) from chromium_error
 
 
+def has_open_pages(context):
+    """فقط صفحه‌هایی را زنده حساب می‌کند که واقعاً بسته نشده‌اند."""
+    try:
+        return any(not page.is_closed() for page in context.pages)
+    except PlaywrightError:
+        return False
+
+
 def wait_for_browser_close(context, sleep=time.sleep):
-    """تا وقتی حداقل یک صفحه باز است، پردازش را زنده نگه می‌دارد."""
-    while context.pages:
+    """تا وقتی حداقل یک صفحه واقعاً باز است، پردازش را زنده نگه می‌دارد."""
+    while has_open_pages(context):
         sleep(POLL_INTERVAL_SECONDS)
 
 
