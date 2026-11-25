@@ -29,7 +29,7 @@ class FollowUpTests(unittest.TestCase):
 
     def test_schema_v7_and_tables(self):
         with storage.connect(self.db) as con:
-            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 7)
+            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 8)
             tables = {r["name"] for r in con.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertTrue({"interaction_logs", "reminders"} <= tables)

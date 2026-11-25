@@ -96,7 +96,7 @@ def collect_visible_listing_cards(page, limit: int = 20) -> list[dict]:
 
 
 def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2.0,
-                       category: str = "", keywords: str = "", sleep=time.sleep) -> AutomationSummary:
+                       category: str = "", keywords: str = "", sleep=time.sleep, on_listing=None) -> AutomationSummary:
     """آگهی‌ها را در مرورگر قابل‌مشاهده یکی‌یکی باز و به نتایج بازمی‌گردد.
 
     متن آگهی، شماره تماس، پیام‌ها و داده‌های شخصی خوانده یا ذخیره نمی‌شوند.
@@ -145,6 +145,14 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30000)
             visited += 1
+            if is_challenge_page(page):
+                return AutomationSummary(visited, "challenge", "محدودیت یا کپچا دیده شد؛ ادامه متوقف شد.")
+            if on_listing is not None:
+                try:
+                    on_listing(page, next(card for card in matched_cards if card["url"] == url))
+                except Exception:
+                    # خطای ثبت اطلاعات جانبی نباید پیمایش یا مرورگر را از کار بیندازد.
+                    pass
             sleep(max(0.0, dwell_seconds))
             if page.is_closed():
                 return AutomationSummary(visited, "stopped", "مرورگر توسط کاربر بسته شد.")

@@ -15,6 +15,7 @@ from app_paths import (BROWSER_PROFILE_PATH as PROFILE, BROWSER_STATUS_PATH as S
                         DATABASE_PATH as DB, ensure_data_dirs)
 from browser_automation import run_visible_search
 from storage import connect, initialize
+from contact_chat_assistant import extract_visible_contact, detect_chat_composer, save_contact_for_review
 
 ensure_data_dirs()
 DEFAULT_URL = "https://divar.ir"
@@ -115,10 +116,55 @@ def main(url=None, category="", keywords="", campaign_id=None, city=""):
             except PlaywrightError as exc:
                 print(f"بارگذاری خودکار صفحه ناموفق بود؛ مرورگر باز می‌ماند: {exc}")
             write_status("running")
-            summary = run_visible_search(page, category=category, keywords=keywords)
+            message_template = ""
+            if campaign_id is not None:
+                with connect(DB) as con:
+                    campaign = con.execute(
+                        "SELECT message_template FROM campaigns WHERE id=?",
+                        (campaign_id,),
+                    ).fetchone()
+                if campaign:
+                    message_template = campaign["message_template"] or ""
+
+            contact_observations = []
+
+            def observe_visible_contact(listing_page, card):
+                # فقط محتوای قابل مشاهده در صفحه آگهی خوانده می‌شود؛ هیچ دکمه‌ای کلیک نمی‌شود.
+                phone = extract_visible_contact(listing_page)
+                chat_available = detect_chat_composer(listing_page) is not None
+                if phone or chat_available:
+                    contact_observations.append({
+                        "url": card["url"], "phone": phone,
+                        "chat_available": chat_available,
+                    })
+
+            summary = run_visible_search(
+                page, category=category, keywords=keywords,
+                on_listing=observe_visible_contact,
+            )
             saved = save_matched_listings(summary.listings, category=category, city=city,
                                           campaign_id=campaign_id)
-            print(f"گزارش مرور خودکار: {summary.status} | {summary.message} | ثبت محلی: {saved}")
+            queued = 0
+            if contact_observations:
+                with connect(DB) as con:
+                    for observation in contact_observations:
+                        lead = con.execute(
+                            "SELECT id FROM leads WHERE ad_url=?",
+                            (observation["url"],),
+                        ).fetchone()
+                        if lead is None:
+                            continue
+                        try:
+                            save_contact_for_review(
+                                DB, lead_id=int(lead["id"]),
+                                contact_value=observation["phone"],
+                                chat_available=observation["chat_available"],
+                                message_draft=message_template,
+                            )
+                            queued += 1
+                        except (ValueError, PermissionError):
+                            continue
+            print(f"گزارش مرور خودکار: {summary.status} | {summary.message} | ثبت محلی: {saved} | صف بازبینی: {queued}")
             write_status("running")
             print("مرورگر زنده آماده است؛ برای پایان، همه پنجره‌های آن را ببندید.")
             wait_for_browser_close(context)

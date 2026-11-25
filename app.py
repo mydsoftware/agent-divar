@@ -24,6 +24,7 @@ from media_tab import PropertyMediaTab
 from backup_tab import BackupTab
 from settings_manager import load_settings
 from settings_tab import SettingsTab
+from contact_review_tab import ContactReviewTab
 from version import __version__
 from app_paths import (
     RESOURCE_DIR as ROOT, DATA_DIR as DATA, DATABASE_PATH as DB,
@@ -95,6 +96,7 @@ class App(tk.Tk):
         self.dashboard_tab=DashboardTab(self.tabs, DB); self.tabs.add(self.dashboard_tab,text="داشبورد و گزارش‌ها")
         self.media_tab=PropertyMediaTab(self.tabs, DB, DATA / "property-media"); self.tabs.add(self.media_tab,text="تصاویر و مدارک ملک")
         self.backup_tab=BackupTab(self.tabs, DB, DATA / "property-media"); self.tabs.add(self.backup_tab,text="پشتیبان‌گیری و بازیابی")
+        self.contact_review_tab=ContactReviewTab(self.tabs, DB); self.tabs.add(self.contact_review_tab,text="بازبینی تماس و چت")
         self.settings_tab=SettingsTab(self.tabs, SETTINGS_FILE, DB, self.settings, self.apply_settings)
         self.tabs.add(self.settings_tab,text="تنظیمات و عیب‌یابی")
         footer=ttk.Label(self,text="یادآوری: پیام تبلیغاتی ناخواسته در چت دیوار ارسال نکنید. پیام‌رسانی فقط در جریان مجاز و با رضایت/درخواست مخاطب انجام شود.",foreground="#9a3412",padding=8)
