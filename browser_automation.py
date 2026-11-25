@@ -104,10 +104,9 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
         return AutomationSummary(0, "unsupported_page", "صفحه فعلی متعلق به دیوار نیست.")
     if is_challenge_page(page):
         return AutomationSummary(0, "challenge", "محدودیت یا کپچا دیده شد؛ ادامه متوقف شد.")
-    if not (category.strip() or keywords.strip()):
-        return AutomationSummary(0, "missing_criteria", "برای اجرای کمپین، حوزه یا کلیدواژه تعیین کنید.")
     cards = collect_visible_listing_cards(page, max_listings)
-    matched_cards = [card for card in cards if match_listing(card["title"], category, keywords).matched]
+    matched_cards = (cards if not (category.strip() or keywords.strip()) else
+                     [card for card in cards if match_listing(card["title"], category, keywords).matched])
     urls = [card["url"] for card in matched_cards]
     # با پیمایش دیداری صفحه، کارت‌های بعدی بارگذاری می‌شوند؛ سقف تلاش محدود است.
     scroll_attempts = 0
@@ -116,7 +115,8 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
             page.mouse.wheel(0, 650)
             page.wait_for_timeout(700)
             for card in collect_visible_listing_cards(page, max_listings):
-                if match_listing(card["title"], category, keywords).matched and card["url"] not in urls:
+                if (not (category.strip() or keywords.strip()) or
+                    match_listing(card["title"], category, keywords).matched) and card["url"] not in urls:
                     urls.append(card["url"])
                     if len(urls) >= max_listings:
                         break
