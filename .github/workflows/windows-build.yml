@@ -48,7 +48,7 @@ jobs:
         run: .\build_windows.ps1
       - name: آزمون سرتاسری نصب، ارتقا و حذف نصب
         shell: pwsh
-        run: .\\tests\\windows_installer_e2e.ps1
+        run: .\tests\windows_installer_e2e.ps1
       - name: بارگذاری گزارش آزمون ویندوز
         if: always()
         uses: actions/upload-artifact@v4
