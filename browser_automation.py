@@ -116,8 +116,11 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
             page.mouse.wheel(0, 650)
             page.wait_for_timeout(700)
             for card in collect_visible_listing_cards(page, max_listings):
-                if (not (category.strip() or keywords.strip()) or
-                    match_listing(card["title"], category, keywords).matched) and card["url"] not in urls:
+                result = match_listing(card["title"], category, keywords)
+                if (not (category.strip() or keywords.strip()) or result.matched) and card["url"] not in urls:
+                    card["match_score"] = result.score
+                    card["match_reason"] = result.reason
+                    matched_cards.append(card)
                     urls.append(card["url"])
                     if len(urls) >= max_listings:
                         break
