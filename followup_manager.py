@@ -168,6 +168,7 @@ class FollowUpTab(ttk.Frame):
         ttk.Button(buttons, text="تکمیل یادآور", command=lambda: self.finish("done")).pack(side="right", padx=4)
         ttk.Button(buttons, text="لغو یادآور", command=lambda: self.finish("cancelled")).pack(side="right", padx=4)
         ttk.Button(buttons, text="نمایش سررسیدشده‌ها", command=self.show_due).pack(side="right", padx=4)
+        ttk.Button(buttons, text="تاریخچه تعاملات پرونده", command=self.show_timeline).pack(side="right", padx=4)
 
     @staticmethod
     def _field(parent, label, variable, row, col):
@@ -220,6 +221,20 @@ class FollowUpTab(ttk.Frame):
         rows = list_reminders(self.db_path, status="pending", due_before=_utc_iso())
         messagebox.showinfo("یادآورهای سررسیدشده",
                             "\n".join(f"#{r['id']} — {r['title']}" for r in rows) or "مورد سررسیدشده‌ای وجود ندارد.")
+
+    def show_timeline(self):
+        try:
+            owner = self._owner()
+            rows = list_interactions(self.db_path, **owner)
+        except Exception as exc:
+            messagebox.showwarning("تاریخچه تعاملات", str(exc))
+            return
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        for row in rows:
+            self.tree.insert("", "end", iid="i" + str(row["id"]),
+                             values=(row["id"], row["interaction_type"], row["summary"],
+                                     row["occurred_at"], "—", row["outcome"] or "بدون نتیجه"))
 
     def finish(self, status):
         selected = self.tree.selection()
