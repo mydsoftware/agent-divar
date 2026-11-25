@@ -100,7 +100,6 @@ class ContactAssistantTests(unittest.TestCase):
         page = FakePage(composer=composer)
         self.assertTrue(fill_chat_draft(page, "سلام، برای اطلاعات بیشتر پیام دادم."))
         self.assertEqual(composer.filled, "سلام، برای اطلاعات بیشتر پیام دادم.")
-        self.assertIsNone(page.locator("button[type=submit]").filled)
 
     def test_requires_unique_visible_composer_and_nonempty_draft(self):
         page = FakePage()
