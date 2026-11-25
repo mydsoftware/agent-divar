@@ -4,14 +4,26 @@ from __future__ import annotations
 
 import sys
 import time
+import json
+import os
 from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent
 PROFILE = ROOT / "data" / "browser-profile"
+STATUS_FILE = ROOT / "data" / "browser-session.json"
 DEFAULT_URL = "https://divar.ir"
 POLL_INTERVAL_SECONDS = 0.25
+
+
+def write_status(state):
+    """وضعیت runner را اتمی ثبت می‌کند تا برنامه اصلی پنجره بسته‌شده را تشخیص دهد."""
+    STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = STATUS_FILE.with_suffix(".tmp")
+    payload = {"pid": os.getpid(), "state": state, "updated_at": time.time()}
+    temporary.write_text(json.dumps(payload), encoding="utf-8")
+    temporary.replace(STATUS_FILE)
 
 
 def launch_browser(playwright):
@@ -69,15 +81,21 @@ def main():
             except PlaywrightError as exc:
                 # خطای شبکه نباید پنجره را ببندد؛ کاربر می‌تواند دستی ادامه دهد.
                 print(f"بارگذاری خودکار صفحه ناموفق بود؛ مرورگر باز می‌ماند: {exc}")
+            write_status("running")
             print("مرورگر زنده آماده است؛ برای پایان، همه پنجره‌های آن را ببندید.")
             wait_for_browser_close(context)
         except KeyboardInterrupt:
             print("درخواست توقف دریافت شد.")
         finally:
+            # از این لحظه پنجره دیگر قابل استفاده نیست؛ اگر پاک‌سازی گیر کند،
+            # برنامه اصلی می‌تواند فقط همین درخت پردازش را جمع‌آوری کند.
+            write_status("closing")
             try:
                 context.close()
             except PlaywrightError:
                 pass
+            finally:
+                write_status("closed")
 
 
 if __name__ == "__main__":
