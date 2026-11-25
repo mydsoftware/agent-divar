@@ -3,6 +3,7 @@
 import json
 import sqlite3
 import tempfile
+from contextlib import closing
 import unittest
 from pathlib import Path
 
@@ -41,7 +42,7 @@ class StorageTests(unittest.TestCase):
 
     def test_migrates_legacy_campaign_table_without_losing_rows(self):
         self.db.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self.db) as con:
+        with closing(sqlite3.connect(self.db)) as con, con:
             con.execute(
                 """CREATE TABLE campaigns (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
