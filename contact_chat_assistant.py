@@ -108,6 +108,12 @@ def save_contact_for_review(db_path, *, lead_id: int, contact_value: str = "",
     with connect(db_path) as con:
         if not con.execute("SELECT 1 FROM leads WHERE id=?", (lead_id,)).fetchone():
             raise ValueError("آگهی موردنظر در CRM وجود ندارد.")
+        existing = con.execute(
+            "SELECT review_status FROM contact_review_queue WHERE lead_id=?",
+            (lead_id,),
+        ).fetchone()
+        if existing and existing["review_status"] == "do_not_contact":
+            raise PermissionError("این سرنخ در فهرست عدم تماس قرار دارد.")
         con.execute(
             """INSERT INTO contact_review_queue
                (lead_id,contact_value,captured_at,chat_available,message_draft)
