@@ -34,9 +34,16 @@ class SmokeTests(unittest.TestCase):
     def test_runner_waits_until_all_pages_are_closed(self):
         runner = load_runner()
 
+        class FakePage:
+            def __init__(self):
+                self.closed = False
+
+            def is_closed(self):
+                return self.closed
+
         class FakeContext:
             def __init__(self):
-                self.pages = [object(), object()]
+                self.pages = [FakePage(), FakePage()]
 
         context = FakeContext()
         sleeps = []
@@ -44,13 +51,26 @@ class SmokeTests(unittest.TestCase):
         def fake_sleep(interval):
             sleeps.append(interval)
             if len(sleeps) == 1:
-                context.pages.pop()
+                context.pages[0].closed = True
             else:
-                context.pages.clear()
+                context.pages[1].closed = True
 
         runner.wait_for_browser_close(context, sleep=fake_sleep)
         self.assertEqual(len(sleeps), 2)
+        self.assertFalse(runner.has_open_pages(context))
         self.assertTrue(all(value == runner.POLL_INTERVAL_SECONDS for value in sleeps))
+
+    def test_runner_detects_already_closed_pages(self):
+        runner = load_runner()
+
+        class ClosedPage:
+            def is_closed(self):
+                return True
+
+        class FakeContext:
+            pages = [ClosedPage()]
+
+        self.assertFalse(runner.has_open_pages(FakeContext()))
 
     def test_app_has_live_browser_entrypoint(self):
         source = APP.read_text(encoding="utf-8")
