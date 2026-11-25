@@ -8,6 +8,7 @@ on:
       - "browser_runner.py"
       - "browser_automation.py"
       - "lead_matching.py"
+      - "contact_chat_assistant.py"
       - "storage.py"
       - "followup_manager.py"
       - "dashboard.py"
@@ -57,7 +58,7 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
       - name: Compile application and tests
-        run: python -m compileall -q app.py browser_runner.py browser_automation.py lead_matching.py app_paths.py storage.py followup_manager.py dashboard.py property_media.py media_tab.py backup_manager.py backup_tab.py settings_manager.py settings_tab.py diagnostics_manager.py tests
+        run: python -m compileall -q app.py browser_runner.py browser_automation.py lead_matching.py contact_chat_assistant.py app_paths.py storage.py followup_manager.py dashboard.py property_media.py media_tab.py backup_manager.py backup_tab.py settings_manager.py settings_tab.py diagnostics_manager.py tests
       - name: Validate PowerShell installer syntax
         shell: pwsh
         run: |
