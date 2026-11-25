@@ -27,9 +27,9 @@ class FollowUpTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_schema_v5_and_tables(self):
+    def test_schema_v6_and_tables(self):
         with storage.connect(self.db) as con:
-            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 6)
             tables = {r["name"] for r in con.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertTrue({"interaction_logs", "reminders"} <= tables)
