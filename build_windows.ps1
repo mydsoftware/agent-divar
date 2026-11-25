@@ -32,7 +32,8 @@ if (Test-Path $PortableZip) { Remove-Item $PortableZip -Force }
 Compress-Archive -Path (Join-Path $Output "*") -DestinationPath $PortableZip -CompressionLevel Optimal
 $IsccCandidates = @(
     (Get-Command ISCC.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1),
-    (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
+    (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
+    (Join-Path ([Environment]::GetFolderPath("ProgramFilesX86")) "Inno Setup 6\ISCC.exe")
 ) | Where-Object { $_ -and (Test-Path $_) }
 if (-not $IsccCandidates) { throw "Inno Setup 6 پیدا نشد؛ برای ساخت نصب‌کننده آن را نصب کنید." }
 $Iscc = $IsccCandidates[0]
