@@ -23,13 +23,13 @@ from media_tab import PropertyMediaTab
 from backup_tab import BackupTab
 from settings_manager import load_settings
 from settings_tab import SettingsTab
+from app_paths import (
+    RESOURCE_DIR as ROOT, DATA_DIR as DATA, DATABASE_PATH as DB,
+    SETTINGS_PATH as SETTINGS_FILE, BROWSER_STATUS_PATH as BROWSER_STATUS,
+    ensure_data_dirs,
+)
 
-ROOT = Path(__file__).resolve().parent
-DATA = ROOT / "data"
-DATA.mkdir(exist_ok=True)
-DB = DATA / "leads.sqlite3"
-SETTINGS_FILE = DATA / "settings.json"
-BROWSER_STATUS = DATA / "browser-session.json"
+ensure_data_dirs()
 
 def connect():
     """اتصال سازگار با نسخه‌های قبلی از طریق لایه ذخیره‌سازی مرکزی."""
@@ -364,7 +364,13 @@ class App(tk.Tk):
                 return
             self.browser_process = None
         try:
-            self.browser_process=subprocess.Popen([sys.executable,str(runner),url],cwd=str(ROOT))
+            if getattr(sys, "frozen", False):
+                command = [sys.executable, "--browser-runner", url]
+                working_directory = str(Path(sys.executable).resolve().parent)
+            else:
+                command = [sys.executable, str(runner), url]
+                working_directory = str(ROOT)
+            self.browser_process=subprocess.Popen(command,cwd=working_directory)
             messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.\\n\\n" + " ".join(plan.notes))
         except Exception as exc:
             messagebox.showerror("خطای اجرا",f"اجرای مرورگر ناموفق بود:\\n{exc}")
@@ -559,5 +565,28 @@ class App(tk.Tk):
         ws.freeze_panes="A2"; ws.auto_filter.ref=ws.dimensions
         wb.save(path); messagebox.showinfo("خروجی آماده شد",f"فایل اکسل ذخیره شد:\n{path}")
 
+def run_self_test():
+    """آزمون دود بدون نمایش پنجره و بدون دست‌کاری داده‌های واقعی کاربر."""
+    import tempfile
+    from storage import initialize
+    with tempfile.TemporaryDirectory(prefix="agent-divar-smoke-") as temporary:
+        test_db = Path(temporary) / "smoke.sqlite3"
+        initialize(test_db)
+        with open_database(test_db) as connection:
+            integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+            schema_version = connection.execute("PRAGMA user_version").fetchone()[0]
+        if integrity != "ok":
+            raise RuntimeError("بررسی سلامت پایگاه‌داده ناموفق بود.")
+        print(json.dumps({"status": "ok", "database_integrity": integrity,
+                          "schema_version": schema_version}, ensure_ascii=False))
+
+
 if __name__=="__main__":
-    App().mainloop()
+    if "--browser-runner" in sys.argv:
+        from browser_runner import main as run_browser
+        index = sys.argv.index("--browser-runner")
+        run_browser(sys.argv[index + 1] if len(sys.argv) > index + 1 else None)
+    elif "--self-test" in sys.argv:
+        run_self_test()
+    else:
+        App().mainloop()
