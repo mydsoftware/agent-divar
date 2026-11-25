@@ -11,7 +11,7 @@ from storage import connect, initialize
 
 DIVAR_HOSTS = {"divar.ir", "www.divar.ir"}
 _DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
-_PHONE_CANDIDATE = re.compile(r"(?<!\d)(?:\+?98|0098|0)?9\d(?:[\s().-]*\d){8}(?!\d)")
+_PHONE_CANDIDATE = re.compile(r"(?<!\d)(?:\+?98|0098|0)?9\d(?:[\s().-]*\d){9}(?!\d)")
 
 
 def normalize_phone(value: str) -> str:
