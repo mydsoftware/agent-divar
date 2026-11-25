@@ -607,8 +607,18 @@ def run_self_test():
 if __name__=="__main__":
     if "--browser-runner" in sys.argv:
         from browser_runner import main as run_browser
+        import argparse
         index = sys.argv.index("--browser-runner")
-        run_browser(sys.argv[index + 1] if len(sys.argv) > index + 1 else None)
+        parser = argparse.ArgumentParser()
+        parser.add_argument("url", nargs="?", default=None)
+        parser.add_argument("--category", default="")
+        parser.add_argument("--keywords", default="")
+        parser.add_argument("--city", default="")
+        parser.add_argument("--campaign-id", default="")
+        args = parser.parse_args(sys.argv[index + 1:])
+        run_browser(args.url, category=args.category, keywords=args.keywords,
+                    city=args.city,
+                    campaign_id=int(args.campaign_id) if args.campaign_id.isdigit() else None)
     elif "--self-test" in sys.argv:
         run_self_test()
     else:
