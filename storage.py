@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "leads.sqlite3"
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 
 def _utc_now() -> str:
@@ -184,6 +184,25 @@ def initialize(db_path: str | Path = DEFAULT_DB_PATH) -> None:
             "CREATE INDEX IF NOT EXISTS idx_task_runs_status "
             "ON task_runs(status, started_at)"
         )
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS property_media (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lead_id INTEGER NOT NULL,
+                stored_path TEXT NOT NULL UNIQUE,
+                original_name TEXT NOT NULL,
+                category TEXT NOT NULL DEFAULT 'سایر',
+                description TEXT NOT NULL DEFAULT '',
+                mime_type TEXT NOT NULL,
+                file_size INTEGER NOT NULL CHECK(file_size > 0),
+                sha256 TEXT NOT NULL,
+                is_primary INTEGER NOT NULL DEFAULT 0 CHECK(is_primary IN (0,1)),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(lead_id) REFERENCES leads(id) ON DELETE CASCADE
+            )
+        """)
+        con.execute("CREATE INDEX IF NOT EXISTS idx_property_media_lead ON property_media(lead_id, is_primary DESC, id DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_property_media_hash ON property_media(lead_id, sha256)")
+
         con.execute(f"PRAGMA user_version={CURRENT_SCHEMA_VERSION}")
 
 
