@@ -10,8 +10,6 @@ on:
       - "dashboard.py"
       - "property_media.py"
       - "media_tab.py"
-      - "property_media.py"
-      - "media_tab.py"
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/ci.yml"
