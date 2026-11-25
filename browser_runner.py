@@ -137,8 +137,18 @@ def main(url=None, category="", keywords="", campaign_id=None, city=""):
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="مرور آگهی‌های منطبق دیوار")
+    parser.add_argument("url", nargs="?", default=DEFAULT_URL)
+    parser.add_argument("--category", default="")
+    parser.add_argument("--keywords", default="")
+    parser.add_argument("--city", default="")
+    parser.add_argument("--campaign-id", default="")
+    args = parser.parse_args()
     try:
-        main()
+        main(args.url, category=args.category, keywords=args.keywords,
+             campaign_id=int(args.campaign_id) if args.campaign_id.isdigit() else None,
+             city=args.city)
     except (PlaywrightError, RuntimeError) as exc:
         print(f"خطای اجرای مرورگر: {exc}", file=sys.stderr)
         raise SystemExit(1)
