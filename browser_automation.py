@@ -106,8 +106,13 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
     if is_challenge_page(page):
         return AutomationSummary(0, "challenge", "محدودیت یا کپچا دیده شد؛ ادامه متوقف شد.")
     cards = collect_visible_listing_cards(page, max_listings)
-    matched_cards = (cards if not (category.strip() or keywords.strip()) else
-                     [card for card in cards if match_listing(card["title"], category, keywords).matched])
+    matched_cards = []
+    for card in cards:
+        result = match_listing(card["title"], category, keywords)
+        if not (category.strip() or keywords.strip()) or result.matched:
+            card["match_score"] = result.score
+            card["match_reason"] = result.reason
+            matched_cards.append(card)
     urls = [card["url"] for card in matched_cards]
     # با پیمایش دیداری صفحه، کارت‌های بعدی بارگذاری می‌شوند؛ سقف تلاش محدود است.
     scroll_attempts = 0
