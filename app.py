@@ -131,7 +131,7 @@ class App(tk.Tk):
         self.c_message=tk.Text(form,height=3,wrap="word"); self.c_message.grid(row=4,column=0,columnspan=2,sticky="ew",padx=6)
         actions=ttk.Frame(form); actions.grid(row=5,column=0,columnspan=2,sticky="e",pady=8)
         ttk.Button(actions,text="ذخیره کمپین",command=self.save_campaign).pack(side="right",padx=4)
-        ttk.Button(actions,text="اجرای زنده در مرورگر ویندوز",command=self.open_search).pack(side="right",padx=4)
+        ttk.Button(actions,text="اجرای خودکار در مرورگر ویندوز",command=self.open_search).pack(side="right",padx=4)
         ttk.Button(actions,text="بستن مرورگر",command=self.close_browser).pack(side="right",padx=4)
         ttk.Button(actions,text="پاک‌کردن فرم",command=self.clear_campaign).pack(side="right",padx=4)
         lower=ttk.LabelFrame(f,text="کمپین‌های ذخیره‌شده",padding=8); lower.pack(fill="both",expand=True,pady=12)
@@ -140,7 +140,7 @@ class App(tk.Tk):
             self.campaign_tree.heading(col,text=title); self.campaign_tree.column(col,width=w,anchor="e")
         self.campaign_tree.pack(fill="both",expand=True)
         self.campaign_tree.bind("<<TreeviewSelect>>",self.select_campaign)
-        ttk.Label(f,text="جستجو در مرورگر به‌صورت هدایت به صفحه دیوار انجام می‌شود؛ ثبت اطلاعات آگهی در این نسخه با ورود دستی و بدون استخراج خودکار اطلاعات شخصی است.",foreground="#475569").pack(anchor="e")
+        ttk.Label(f,text="پس از بازشدن دیوار، آگهی‌های قابل مشاهده به‌ترتیب باز و مرور می‌شوند. ثبت مشخصات در CRM همچنان با بررسی و ورود دستی انجام می‌شود.",foreground="#475569").pack(anchor="e")
 
 
     def _build_buyers_tab(self):
@@ -390,7 +390,7 @@ class App(tk.Tk):
                 command = [sys.executable, str(runner), url]
                 working_directory = str(ROOT)
             self.browser_process=subprocess.Popen(command,cwd=working_directory)
-            messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.\\n\\n" + " ".join(plan.notes))
+            messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود و آگهی‌های صفحه به‌ترتیب مرور خواهند شد. اطلاعات تماس یا پیام‌ها استخراج نمی‌شوند.\\n\\n" + " ".join(plan.notes))
         except Exception as exc:
             messagebox.showerror("خطای اجرا",f"اجرای مرورگر ناموفق بود:\\n{exc}")
 
