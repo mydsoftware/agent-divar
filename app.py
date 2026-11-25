@@ -21,11 +21,14 @@ from followup_manager import FollowUpTab
 from dashboard import DashboardTab
 from media_tab import PropertyMediaTab
 from backup_tab import BackupTab
+from settings_manager import load_settings
+from settings_tab import SettingsTab
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 DATA.mkdir(exist_ok=True)
 DB = DATA / "leads.sqlite3"
+SETTINGS_FILE = DATA / "settings.json"
 BROWSER_STATUS = DATA / "browser-session.json"
 
 def connect():
@@ -39,7 +42,8 @@ class App(tk.Tk):
         self.title("مدیریت سرنخ دیوار | نسخه پایه")
         self.geometry("1180x760")
         self.minsize(980, 650)
-        self.option_add("*Font", "Tahoma 10")
+        self.settings = load_settings(SETTINGS_FILE)
+        self.option_add("*Font", f"Tahoma {self.settings['font_size']}")
         initialize_database(DB)
         self.campaign_id = None
         self.browser_process = None
@@ -51,10 +55,10 @@ class App(tk.Tk):
 
     def _style(self):
         s=ttk.Style(self)
-        try: s.theme_use("clam")
+        try: s.theme_use(self.settings["theme"])
         except tk.TclError: pass
-        s.configure("Treeview", rowheight=28, font=("Tahoma",9))
-        s.configure("Treeview.Heading", font=("Tahoma",9,"bold"))
+        s.configure("Treeview", rowheight=28, font=("Tahoma",self.settings["font_size"]-1))
+        s.configure("Treeview.Heading", font=("Tahoma",self.settings["font_size"]-1,"bold"))
         s.configure("TButton", padding=7)
         s.configure("Header.TLabel", font=("Tahoma",17,"bold"), foreground="#164e63")
 
@@ -72,8 +76,21 @@ class App(tk.Tk):
         self.dashboard_tab=DashboardTab(self.tabs, DB); self.tabs.add(self.dashboard_tab,text="داشبورد و گزارش‌ها")
         self.media_tab=PropertyMediaTab(self.tabs, DB, DATA / "property-media"); self.tabs.add(self.media_tab,text="تصاویر و مدارک ملک")
         self.backup_tab=BackupTab(self.tabs, DB, DATA / "property-media"); self.tabs.add(self.backup_tab,text="پشتیبان‌گیری و بازیابی")
+        self.settings_tab=SettingsTab(self.tabs, SETTINGS_FILE, DB, self.settings, self.apply_settings)
+        self.tabs.add(self.settings_tab,text="تنظیمات و عیب‌یابی")
         footer=ttk.Label(self,text="یادآوری: پیام تبلیغاتی ناخواسته در چت دیوار ارسال نکنید. پیام‌رسانی فقط در جریان مجاز و با رضایت/درخواست مخاطب انجام شود.",foreground="#9a3412",padding=8)
         footer.pack(fill="x")
+
+    def apply_settings(self, settings):
+        self.settings = dict(settings)
+        self.option_add("*Font", f"Tahoma {self.settings['font_size']}")
+        style = ttk.Style(self)
+        try:
+            style.theme_use(self.settings["theme"])
+        except tk.TclError:
+            style.theme_use("clam")
+        style.configure("Treeview", rowheight=28, font=("Tahoma", self.settings["font_size"] - 1))
+        style.configure("Treeview.Heading", font=("Tahoma", self.settings["font_size"] - 1, "bold"))
 
     def _build_campaign_tab(self):
         f=self.camp_tab
@@ -521,7 +538,7 @@ class App(tk.Tk):
         webbrowser.open(self.lead_tree.item(sel[0],"values")[-1])
 
     def export_excel(self):
-        path=filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],initialfile="divar_leads.xlsx")
+        path=filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],initialfile="divar_leads.xlsx",initialdir=self.settings.get("export_directory") or str(DATA))
         if not path:return
         with connect() as con:
             rows=con.execute("""SELECT id,title,category,city,public_contact,notes,consent_status,stage,ad_url,created_at FROM leads ORDER BY id DESC""").fetchall()

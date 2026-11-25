@@ -12,8 +12,9 @@ if ($Python) {
 } else {
     $Python = Get-Command python -ErrorAction SilentlyContinue
     if (-not $Python) { throw "Python 3.11 نصب نیست." }
-    & python --version
+    $VersionOutput = & python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
     if ($LASTEXITCODE -ne 0) { throw "اجرای Python ناموفق بود." }
+    if ($VersionOutput -ne "3.11") { throw "نسخه Python باید دقیقاً 3.11 باشد؛ نسخه فعلی: $VersionOutput" }
     $PythonCommand = "python"
 }
 

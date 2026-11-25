@@ -37,8 +37,10 @@ def create_backup(db_path: str | Path, media_root: str | Path,
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         raise BackupError("فایل مقصد از قبل وجود دارد.")
-    with tempfile.TemporaryDirectory(prefix="agent-divar-backup-") as tmp:
+    reserved_target = False
+    with tempfile.TemporaryDirectory(prefix="agent-divar-backup-", dir=str(target.parent)) as tmp:
         temp = Path(tmp)
+        temporary_archive = temp / "backup.zip"
         snapshot = temp / "database.sqlite3"
         source = sqlite3.connect(str(db))
         output = sqlite3.connect(str(snapshot))
@@ -51,7 +53,7 @@ def create_backup(db_path: str | Path, media_root: str | Path,
             output.close()
             source.close()
         entries = []
-        with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        with zipfile.ZipFile(temporary_archive, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             archive.write(snapshot, "database.sqlite3")
             if media.exists():
                 for item in sorted(media.rglob("*")):
@@ -68,6 +70,15 @@ def create_backup(db_path: str | Path, media_root: str | Path,
                         "media": entries}
             archive.writestr("manifest.json",
                              json.dumps(manifest, ensure_ascii=False, indent=2))
+        # رزرو انحصاری مقصد از بازنویسی فایل موجود یا رقابت هم‌زمان جلوگیری می‌کند.
+        try:
+            with target.open("xb"):
+                reserved_target = True
+            os.replace(temporary_archive, target)
+            reserved_target = False
+        finally:
+            if reserved_target:
+                target.unlink(missing_ok=True)
     return target
 
 
@@ -119,7 +130,7 @@ def inspect_backup(archive_path: str | Path) -> dict:
 
 def restore_backup(archive_path: str | Path, db_path: str | Path,
                    media_root: str | Path) -> dict:
-    """بازیابی پس از اعتبارسنجی کامل؛ پیش از جایگزینی از وضعیت فعلی نسخه ایمن می‌گیرد."""
+    """بازیابی پس از اعتبارسنجی؛ از کپی موقت برای تلاش rollback استفاده می‌کند."""
     archive = Path(archive_path).expanduser().resolve(strict=True)
     db = Path(db_path).expanduser().resolve()
     media = Path(media_root).expanduser().resolve()
