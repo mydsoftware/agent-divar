@@ -357,6 +357,9 @@ class App(tk.Tk):
         self.c_message.delete("1.0","end"); self.c_message.insert("1.0",row[4])
 
     def open_search(self):
+        if not (self.c_category.get().strip() or self.c_keywords.get().strip()):
+            messagebox.showwarning("معیار ناقص", "برای تطبیق آگهی‌ها، حوزه یا حداقل یک کلیدواژه وارد کنید.")
+            return
         try:
             plan = build_search_plan(
                 city=self.c_city.get(),
