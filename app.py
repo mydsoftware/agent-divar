@@ -6,6 +6,7 @@ import json
 import webbrowser
 import subprocess
 import sys
+import os
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -28,6 +29,13 @@ from app_paths import (
     SETTINGS_PATH as SETTINGS_FILE, BROWSER_STATUS_PATH as BROWSER_STATUS,
     ensure_data_dirs,
 )
+
+# در حالت پنجره‌ای PyInstaller ممکن است stdout و stderr تعریف نشده باشند.
+if getattr(sys, "frozen", False):
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 ensure_data_dirs()
 
