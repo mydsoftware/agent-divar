@@ -27,10 +27,6 @@ SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
 
-[Languages]
-Name: "persian"; MessagesFile: "compiler:Languages\Persian.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
-
 [Tasks]
 Name: "desktopicon"; Description: "ایجاد میانبر روی دسکتاپ"; GroupDescription: "میانبرها:"; Flags: unchecked
 
