@@ -5,7 +5,9 @@ on:
     paths:
       - "app.py"
       - "app_paths.py"
-      - "tests/test_app_paths.py"\n      - "tests/test_windows_release_backup.py"\n      - "tests/windows_installer_e2e.ps1"
+      - "tests/test_app_paths.py"
+      - "tests/test_windows_release_backup.py"
+      - "tests/windows_installer_e2e.ps1"
       - "browser_runner.py"
       - "AgentDivar.spec"
       - "build_windows.ps1"
@@ -43,7 +45,18 @@ jobs:
       - name: ساخت EXE و نصب‌کننده و اجرای آزمون دود
         shell: pwsh
         run: .\build_windows.ps1
-      - name: آزمون سرتاسری نصب، ارتقا و حذف نصب\n        shell: pwsh\n        run: .\\tests\\windows_installer_e2e.ps1\n      - name: بارگذاری گزارش آزمون ویندوز\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: AgentDivar-Windows-E2E-Logs\n          path: artifacts/windows-e2e/\n          if-no-files-found: warn\n          retention-days: 14\n      - name: بارگذاری بسته اجرایی
+      - name: آزمون سرتاسری نصب، ارتقا و حذف نصب
+        shell: pwsh
+        run: .\.\\tests\\windows_installer_e2e.ps1
+      - name: بارگذاری گزارش آزمون ویندوز
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgentDivar-Windows-E2E-Logs
+          path: artifacts/windows-e2e/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: بارگذاری بسته اجرایی
         uses: actions/upload-artifact@v4
         with:
           name: AgentDivar-Windows-x64
