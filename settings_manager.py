@@ -54,9 +54,9 @@ def save_settings(path: str | Path, settings: dict) -> dict:
     fd, temporary = tempfile.mkstemp(prefix=target.name + ".", suffix=".tmp",
                                      dir=str(target.parent))
     try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\\n") as stream:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
             json.dump(clean, stream, ensure_ascii=False, indent=2)
-            stream.write("\\n")
+            stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, target)
