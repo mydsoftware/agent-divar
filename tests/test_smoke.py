@@ -109,6 +109,14 @@ class SmokeTests(unittest.TestCase):
         self.assertIn('status.get("state") in ("closing", "closed")', source)
         self.assertIn('"taskkill", "/PID"', source)
 
+    def test_app_has_explicit_browser_close_control(self):
+        source = APP.read_text(encoding="utf-8")
+        self.assertIn('text="بستن مرورگر",command=self.close_browser', source)
+        self.assertIn("def close_browser(self):", source)
+        self.assertIn("self._terminate_browser_tree()", source)
+        self.assertIn("self.browser_process = None", source)
+        self.assertIn('"state": "closed"', source)
+
     def test_app_has_live_browser_entrypoint(self):
         source = APP.read_text(encoding="utf-8")
         self.assertIn("browser_runner.py", source)
