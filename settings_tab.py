@@ -80,4 +80,4 @@ class SettingsTab(ttk.Frame):
         except (OSError, ValueError) as exc:
             messagebox.showerror("خطا", f"ساخت بسته عیب‌یابی ناموفق بود: {exc}")
             return
-        messagebox.showinfo("آماده شد", f"بسته عیب‌یابی ساخته شد:\\n{path}")
+        messagebox.showinfo("آماده شد", f"بسته عیب‌یابی ساخته شد:\n{path}")
