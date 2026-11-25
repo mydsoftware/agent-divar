@@ -66,6 +66,12 @@ class StorageTests(unittest.TestCase):
             ).fetchone()
             self.assertEqual(tuple(row), ("کمپین قدیمی", "دزفول", 168))
 
+    def test_migration_adds_listing_analysis_fields(self):
+        storage.initialize(self.db)
+        with storage.connect(self.db) as con:
+            columns = {row["name"] for row in con.execute("PRAGMA table_info(leads)")}
+        self.assertTrue({"price", "area", "rooms", "location", "features_json"} <= columns)
+
     def test_initialize_is_idempotent(self):
         storage.initialize(self.db)
         storage.initialize(self.db)
