@@ -58,13 +58,13 @@ def launch_browser(playwright):
 def has_open_pages(context):
     """بسته‌شدن واقعی مرورگر یا همه صفحه‌ها را تشخیص می‌دهد."""
     try:
-        browser = context.browser
-        # در بعضی نسخه‌های Playwright پس از بستن آخرین پنجره،
-        # صفحه‌ها در context باقی می‌مانند اما اتصال مرورگر قطع شده است.
+        # FakeContextها و برخی wrapperها browser property ندارند؛
+        # در این حالت وضعیت صفحه‌ها معیار جایگزین است.
+        browser = getattr(context, "browser", None)
         if browser is not None and not browser.is_connected():
             return False
         return any(not page.is_closed() for page in context.pages)
-    except PlaywrightError:
+    except (PlaywrightError, AttributeError):
         return False
 
 
@@ -85,7 +85,6 @@ def main():
                 page.goto(url, wait_until="domcontentloaded", timeout=60000)
                 print("صفحه مقصد بارگذاری شد.")
             except PlaywrightError as exc:
-                # خطای شبکه نباید پنجره را ببندد؛ کاربر می‌تواند دستی ادامه دهد.
                 print(f"بارگذاری خودکار صفحه ناموفق بود؛ مرورگر باز می‌ماند: {exc}")
             write_status("running")
             print("مرورگر زنده آماده است؛ برای پایان، همه پنجره‌های آن را ببندید.")
@@ -93,8 +92,6 @@ def main():
         except KeyboardInterrupt:
             print("درخواست توقف دریافت شد.")
         finally:
-            # از این لحظه پنجره دیگر قابل استفاده نیست؛ اگر پاک‌سازی گیر کند،
-            # برنامه اصلی می‌تواند فقط همین درخت پردازش را جمع‌آوری کند.
             write_status("closing")
             try:
                 context.close()
