@@ -1,0 +1,44 @@
+name: Windows EXE Build
+
+on:
+  pull_request:
+    paths:
+      - "app.py"
+      - "app_paths.py"
+      - "browser_runner.py"
+      - "AgentDivar.spec"
+      - "build_windows.ps1"
+      - "requirements.txt"
+      - "storage.py"
+      - "followup_manager.py"
+      - "dashboard.py"
+      - "property_media.py"
+      - "media_tab.py"
+      - "backup_manager.py"
+      - "backup_tab.py"
+      - "settings_manager.py"
+      - "settings_tab.py"
+      - "diagnostics_manager.py"
+      - ".github/workflows/windows-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: دریافت کد
+        uses: actions/checkout@v4
+      - name: نصب Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: ساخت EXE و اجرای آزمون دود
+        shell: pwsh
+        run: .\build_windows.ps1
+      - name: بارگذاری بسته اجرایی
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgentDivar-Windows-x64
+          path: dist/AgentDivar/
+          if-no-files-found: error
+          retention-days: 14
