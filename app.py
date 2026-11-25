@@ -7,7 +7,6 @@ import webbrowser
 import subprocess
 import sys
 from pathlib import Path
-from urllib.parse import quote_plus
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
@@ -16,6 +15,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
 from storage import connect as open_database, initialize as initialize_database, record_event
+from search_engine import SearchValidationError, build_search_plan
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
@@ -168,17 +168,21 @@ class App(tk.Tk):
         self.c_message.delete("1.0","end"); self.c_message.insert("1.0",row[4])
 
     def open_search(self):
-        city=self.c_city.get().strip() or "iran"
-        keywords=self.c_keywords.get().strip() or self.c_category.get().strip()
-        city_slug=city.lower().replace(" ","-") if city.isascii() else "iran"
-        url=f"https://divar.ir/s/{quote_plus(city_slug)}"
-        if keywords:url += f"?q={quote_plus(keywords)}"
+        try:
+            plan = build_search_plan(
+                city=self.c_city.get(),
+                keywords=self.c_keywords.get(),
+                category=self.c_category.get(),
+                published_within_hours=self.age_filter_hours[self.c_age_filter.get()],
+            )
+        except SearchValidationError as exc:
+            messagebox.showwarning("معیار جستجوی نامعتبر", str(exc))
+            return
+        url = plan.url
         runner=ROOT / "browser_runner.py"
         if self.browser_process and self.browser_process.poll() is None:
             status = self._read_browser_status()
             if status and status.get("pid") == self.browser_process.pid and status.get("state") in ("closing", "closed"):
-                # پنجره بسته شده اما runner در پاک‌سازی گیر کرده است؛ فقط در این حالت
-                # درخت پردازش متعلق به همین runner خاتمه داده می‌شود.
                 self._terminate_browser_tree()
             else:
                 try:
@@ -191,7 +195,7 @@ class App(tk.Tk):
             self.browser_process = None
         try:
             self.browser_process=subprocess.Popen([sys.executable,str(runner),url],cwd=str(ROOT))
-            messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.")
+            messagebox.showinfo("مرورگر زنده","مرورگر قابل‌مشاهده باز می‌شود. می‌توانید با موس و کیبورد خودتان کار کنید.\\n\\n" + " ".join(plan.notes))
         except Exception as exc:
             messagebox.showerror("خطای اجرا",f"اجرای مرورگر ناموفق بود:\\n{exc}")
 
