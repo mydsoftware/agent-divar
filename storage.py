@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "leads.sqlite3"
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 def _utc_now() -> str:
@@ -68,6 +68,20 @@ def initialize(db_path: str | Path = DEFAULT_DB_PATH) -> None:
                 FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
             )
         """)
+
+        lead_columns = {
+            row["name"] for row in con.execute("PRAGMA table_info(leads)")
+        }
+        lead_additions = {
+            "price": "INTEGER",
+            "area": "REAL",
+            "rooms": "INTEGER",
+            "location": "TEXT NOT NULL DEFAULT ''",
+            "features_json": "TEXT NOT NULL DEFAULT '[]'",
+        }
+        for column, definition in lead_additions.items():
+            if column not in lead_columns:
+                con.execute(f"ALTER TABLE leads ADD COLUMN {column} {definition}")
 
         campaign_columns = {
             row["name"] for row in con.execute("PRAGMA table_info(campaigns)")

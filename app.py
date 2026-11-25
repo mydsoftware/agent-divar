@@ -16,6 +16,7 @@ from openpyxl.utils import get_column_letter
 
 from storage import connect as open_database, initialize as initialize_database, record_event
 from search_engine import SearchValidationError, build_search_plan
+from listing_analyzer import Listing, BuyerCriteria, analyze_listing
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
@@ -99,25 +100,41 @@ class App(tk.Tk):
         f=self.lead_tab
         form=ttk.LabelFrame(f,text="ثبت سرنخ",padding=12); form.pack(fill="x")
         self.l_url=tk.StringVar(); self.l_title=tk.StringVar(); self.l_category=tk.StringVar(); self.l_city=tk.StringVar(); self.l_contact=tk.StringVar(); self.l_consent=tk.StringVar(value="نامشخص"); self.l_stage=tk.StringVar(value="جدید")
+        self.l_price=tk.StringVar(); self.l_area=tk.StringVar(); self.l_rooms=tk.StringVar(); self.l_location=tk.StringVar(); self.l_features=tk.StringVar()
+        self.b_budget=tk.StringVar(); self.b_min_area=tk.StringVar(); self.b_max_area=tk.StringVar(); self.b_rooms=tk.StringVar(); self.b_location=tk.StringVar(); self.b_features=tk.StringVar()
         items=[("لینک آگهی",self.l_url),("عنوان آگهی",self.l_title),("حوزه",self.l_category),("شهر",self.l_city),("راه تماس عمومی/مجاز",self.l_contact)]
         for i,(label,var) in enumerate(items):
             r,c=divmod(i,2); cell=ttk.Frame(form); cell.grid(row=r,column=c,sticky="ew",padx=6,pady=4)
             ttk.Label(cell,text=label).pack(anchor="e"); ttk.Entry(cell,textvariable=var,justify="right").pack(fill="x")
         r=3
-        cell=ttk.Frame(form); cell.grid(row=r,column=0,sticky="ew",padx=6,pady=4)
+        listing_fields=[("قیمت کل (تومان)",self.l_price),("متراژ (متر)",self.l_area),("تعداد اتاق",self.l_rooms),("محله / محدوده",self.l_location),("امکانات (با ویرگول)",self.l_features)]
+        for i,(label,var) in enumerate(listing_fields):
+            rr,cc=divmod(i,2); cell=ttk.Frame(form); cell.grid(row=rr+3,column=cc,sticky="ew",padx=6,pady=4)
+            ttk.Label(cell,text=label).pack(anchor="e"); ttk.Entry(cell,textvariable=var,justify="right").pack(fill="x")
+        cell=ttk.Frame(form); cell.grid(row=6,column=0,sticky="ew",padx=6,pady=4)
         ttk.Label(cell,text="وضعیت رضایت").pack(anchor="e")
         ttk.Combobox(cell,textvariable=self.l_consent,values=["نامشخص","رضایت ثبت‌شده","درخواست تماس داده","عدم رضایت"],state="readonly").pack(fill="x")
-        cell=ttk.Frame(form); cell.grid(row=r,column=1,sticky="ew",padx=6,pady=4)
+        cell=ttk.Frame(form); cell.grid(row=6,column=1,sticky="ew",padx=6,pady=4)
         ttk.Label(cell,text="مرحله فروش").pack(anchor="e")
         ttk.Combobox(cell,textvariable=self.l_stage,values=["جدید","بررسی‌شده","مشتری علاقه‌مند","مشتری","عدم تمایل","بایگانی"],state="readonly").pack(fill="x")
         form.columnconfigure(0,weight=1); form.columnconfigure(1,weight=1)
-        ttk.Label(form,text="یادداشت").grid(row=4,column=0,columnspan=2,sticky="e",padx=6)
-        self.l_notes=tk.Text(form,height=2,wrap="word"); self.l_notes.grid(row=5,column=0,columnspan=2,sticky="ew",padx=6)
-        btns=ttk.Frame(form); btns.grid(row=6,column=0,columnspan=2,sticky="e",pady=7)
+        ttk.Label(form,text="یادداشت").grid(row=7,column=0,columnspan=2,sticky="e",padx=6)
+        self.l_notes=tk.Text(form,height=2,wrap="word"); self.l_notes.grid(row=8,column=0,columnspan=2,sticky="ew",padx=6)
+        btns=ttk.Frame(form); btns.grid(row=9,column=0,columnspan=2,sticky="e",pady=7)
         ttk.Button(btns,text="ذخیره سرنخ",command=self.save_lead).pack(side="right",padx=4)
         ttk.Button(btns,text="بازکردن آگهی انتخاب‌شده",command=self.open_selected).pack(side="right",padx=4)
         ttk.Button(btns,text="خروجی اکسل",command=self.export_excel).pack(side="right",padx=4)
         ttk.Button(btns,text="به‌روزرسانی",command=self.refresh_leads).pack(side="right",padx=4)
+        criteria=ttk.LabelFrame(f,text="تحلیل تطبیق آگهی انتخاب‌شده با نیاز خریدار",padding=10); criteria.pack(fill="x",pady=6)
+        criteria_fields=[("سقف بودجه (تومان)",self.b_budget),("حداقل متراژ",self.b_min_area),("حداکثر متراژ",self.b_max_area),("تعداد اتاق",self.b_rooms),("محدوده دلخواه",self.b_location),("امکانات موردنیاز (ویرگول)",self.b_features)]
+        for i,(label,var) in enumerate(criteria_fields):
+            rr,cc=divmod(i,3); cell=ttk.Frame(criteria); cell.grid(row=rr,column=cc,sticky="ew",padx=5,pady=4)
+            ttk.Label(cell,text=label).pack(anchor="e"); ttk.Entry(cell,textvariable=var,justify="right").pack(fill="x")
+        for cc in range(3): criteria.columnconfigure(cc,weight=1)
+        analysis_actions=ttk.Frame(criteria); analysis_actions.grid(row=2,column=0,columnspan=3,sticky="e",pady=4)
+        ttk.Button(analysis_actions,text="تحلیل آگهی انتخاب‌شده",command=self.analyze_selected_listing).pack(side="right",padx=4)
+        self.analysis_result=ttk.Label(criteria,text="برای تحلیل، یک آگهی انتخاب و معیارهای خریدار را وارد کنید.",justify="right",wraplength=900)
+        self.analysis_result.grid(row=3,column=0,columnspan=3,sticky="e",padx=5,pady=5)
         listing=ttk.LabelFrame(f,text="سرنخ‌های ثبت‌شده",padding=8); listing.pack(fill="both",expand=True,pady=10)
         cols=("id","title","category","city","contact","consent","stage","url")
         self.lead_tree=ttk.Treeview(listing,columns=cols,show="headings")
@@ -279,8 +296,14 @@ class App(tk.Tk):
             messagebox.showwarning("ورودی ناقص","عنوان آگهی را وارد کنید."); return
         try:
             with connect() as con:
-                con.execute("""INSERT INTO leads(campaign_id,ad_url,title,category,city,public_contact,notes,consent_status,stage)
-                VALUES(?,?,?,?,?,?,?,?,?)""",(self.campaign_id,url,self.l_title.get().strip(),self.l_category.get().strip(),self.l_city.get().strip(),self.l_contact.get().strip(),self.l_notes.get("1.0","end").strip(),self.l_consent.get(),self.l_stage.get()))
+                price=self._optional_int(self.l_price.get(),"قیمت")
+                area=self._optional_float(self.l_area.get(),"متراژ")
+                rooms=self._optional_int(self.l_rooms.get(),"تعداد اتاق")
+                features=[x.strip() for x in self.l_features.get().split(",") if x.strip()]
+                con.execute("""INSERT INTO leads(campaign_id,ad_url,title,category,city,public_contact,notes,consent_status,stage,price,area,rooms,location,features_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(self.campaign_id,url,self.l_title.get().strip(),self.l_category.get().strip(),self.l_city.get().strip(),self.l_contact.get().strip(),self.l_notes.get("1.0","end").strip(),self.l_consent.get(),self.l_stage.get(),price,area,rooms,self.l_location.get().strip(),json.dumps(features,ensure_ascii=False)))
+        except ValueError as exc:
+            messagebox.showwarning("عدد نامعتبر",str(exc)); return
         except sqlite3.IntegrityError:
             messagebox.showwarning("تکراری","این لینک قبلاً ثبت شده است."); return
         with connect() as con:
@@ -291,6 +314,61 @@ class App(tk.Tk):
             details={"campaign_id": self.campaign_id, "consent_status": self.l_consent.get()},
         )
         self.refresh_leads(); messagebox.showinfo("ذخیره شد","سرنخ ذخیره شد.")
+
+    @staticmethod
+    def _optional_int(value, label):
+        value=value.strip()
+        if not value:return None
+        try:
+            number=int(value.replace(",","").replace("٬",""))
+            if number < 0: raise ValueError
+            return number
+        except ValueError:
+            raise ValueError(f"{label} باید عدد صحیح نامنفی باشد.")
+
+    @staticmethod
+    def _optional_float(value, label):
+        value=value.strip()
+        if not value:return None
+        try:
+            number=float(value.replace(",","").replace("٬",""))
+            if number <= 0: raise ValueError
+            return number
+        except ValueError:
+            raise ValueError(f"{label} باید عددی بزرگ‌تر از صفر باشد.")
+
+    def analyze_selected_listing(self):
+        selected=self.lead_tree.selection()
+        if not selected:
+            messagebox.showinfo("انتخاب آگهی","ابتدا یک آگهی از فهرست انتخاب کنید.")
+            return
+        try:
+            lead_id=int(self.lead_tree.item(selected[0],"values")[0])
+            with connect() as con:
+                row=con.execute("SELECT title,price,area,rooms,location,features_json FROM leads WHERE id=?",(lead_id,)).fetchone()
+            if row is None:
+                messagebox.showwarning("آگهی یافت نشد","اطلاعات آگهی در پایگاه داده پیدا نشد.")
+                return
+            features=json.loads(row["features_json"] or "[]")
+            listing=Listing(title=row["title"],price=row["price"],area=row["area"],rooms=row["rooms"],location=row["location"] or "",features=tuple(features))
+            criteria=BuyerCriteria(
+                max_budget=self._optional_int(self.b_budget.get(),"سقف بودجه"),
+                min_area=self._optional_float(self.b_min_area.get(),"حداقل متراژ"),
+                max_area=self._optional_float(self.b_max_area.get(),"حداکثر متراژ"),
+                rooms=self._optional_int(self.b_rooms.get(),"تعداد اتاق"),
+                location=self.b_location.get().strip(),
+                required_features=tuple(x.strip() for x in self.b_features.get().split(",") if x.strip()),
+            )
+            result=analyze_listing(listing,criteria)
+        except (ValueError,TypeError,json.JSONDecodeError) as exc:
+            messagebox.showwarning("معیار نامعتبر",str(exc))
+            return
+        if result.score is None:
+            text="نتیجه: اطلاعات ناکافی\n"+"\n".join(result.reasons)
+        else:
+            text=f"امتیاز تطبیق: {result.score} از ۱۰۰ | وضعیت: {result.status} | پوشش معیارها: {result.compared_weight} از ۱۰۰\n"+"\n".join(result.reasons)
+        self.analysis_result.configure(text=text)
+        record_event(DB,"listing.analyzed",entity_type="lead",entity_id=lead_id,message="تحلیل تطبیق آگهی انجام شد",details={"score":result.score,"status":result.status,"compared_weight":result.compared_weight})
 
     def refresh_leads(self):
         for x in self.lead_tree.get_children(): self.lead_tree.delete(x)
