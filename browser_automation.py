@@ -16,6 +16,7 @@ class AutomationSummary:
     visited: int
     status: str
     message: str
+    listings: tuple[dict, ...] = ()
 
 
 def is_divar_url(url: str) -> bool:
@@ -143,4 +144,5 @@ def run_visible_search(page, *, max_listings: int = 15, dwell_seconds: float = 2
             page.wait_for_timeout(500)
         except Exception as exc:
             return AutomationSummary(visited, "paused", f"پیمایش متوقف شد: {type(exc).__name__}")
-    return AutomationSummary(visited, "completed", f"{visited} آگهی در مرورگر بازبینی شد؛ اطلاعات برای ثبت دستی در دسترس است.")
+    matched = tuple(card for card in matched_cards if card["url"] in urls)
+    return AutomationSummary(visited, "completed", f"{visited} آگهی منطبق در مرورگر بازبینی شد.", matched)
