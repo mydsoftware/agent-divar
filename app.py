@@ -15,48 +15,18 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
+from storage import connect as open_database, initialize as initialize_database, record_event
+
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 DATA.mkdir(exist_ok=True)
 DB = DATA / "leads.sqlite3"
 BROWSER_STATUS = DATA / "browser-session.json"
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS campaigns (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- name TEXT NOT NULL,
- category TEXT NOT NULL DEFAULT '',
- city TEXT NOT NULL DEFAULT '',
- keywords TEXT NOT NULL DEFAULT '',
- message_template TEXT NOT NULL DEFAULT '',
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
- published_within_hours INTEGER NOT NULL DEFAULT 168
-);
-CREATE TABLE IF NOT EXISTS leads (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- campaign_id INTEGER,
- ad_url TEXT NOT NULL UNIQUE,
- title TEXT NOT NULL DEFAULT '',
- category TEXT NOT NULL DEFAULT '',
- city TEXT NOT NULL DEFAULT '',
- public_contact TEXT NOT NULL DEFAULT '',
- notes TEXT NOT NULL DEFAULT '',
- consent_status TEXT NOT NULL DEFAULT 'نامشخص',
- stage TEXT NOT NULL DEFAULT 'جدید',
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
- FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
-);
-"""
-
 def connect():
-    con = sqlite3.connect(DB)
-    con.execute("PRAGMA foreign_keys=ON")
-    con.executescript(SCHEMA)
-    # مهاجرت امن برای پایگاه‌داده‌های ساخته‌شده در نسخه‌های قبلی
-    campaign_columns = {row[1] for row in con.execute("PRAGMA table_info(campaigns)")}
-    if "published_within_hours" not in campaign_columns:
-        con.execute("ALTER TABLE campaigns ADD COLUMN published_within_hours INTEGER NOT NULL DEFAULT 168")
-    return con
+    """اتصال سازگار با نسخه‌های قبلی از طریق لایه ذخیره‌سازی مرکزی."""
+    return open_database(DB)
+
 
 class App(tk.Tk):
     def __init__(self):
@@ -65,6 +35,7 @@ class App(tk.Tk):
         self.geometry("1180x760")
         self.minsize(980, 650)
         self.option_add("*Font", "Tahoma 10")
+        initialize_database(DB)
         self.campaign_id = None
         self.browser_process = None
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -167,6 +138,10 @@ class App(tk.Tk):
             else:
                 cur=con.execute("INSERT INTO campaigns(name,category,city,keywords,message_template,published_within_hours) VALUES(?,?,?,?,?,?)",values)
                 self.campaign_id=cur.lastrowid
+        record_event(
+            DB, "campaign.saved", entity_type="campaign",
+            entity_id=self.campaign_id, message="کمپین ذخیره شد",
+        )
         self.refresh_campaigns(); messagebox.showinfo("ذخیره شد","کمپین ذخیره شد.")
 
     def clear_campaign(self):
@@ -304,6 +279,13 @@ class App(tk.Tk):
                 VALUES(?,?,?,?,?,?,?,?,?)""",(self.campaign_id,url,self.l_title.get().strip(),self.l_category.get().strip(),self.l_city.get().strip(),self.l_contact.get().strip(),self.l_notes.get("1.0","end").strip(),self.l_consent.get(),self.l_stage.get()))
         except sqlite3.IntegrityError:
             messagebox.showwarning("تکراری","این لینک قبلاً ثبت شده است."); return
+        with connect() as con:
+            lead_id = con.execute("SELECT id FROM leads WHERE ad_url=?", (url,)).fetchone()[0]
+        record_event(
+            DB, "lead.created", entity_type="lead", entity_id=lead_id,
+            message="سرنخ به‌صورت دستی ثبت شد",
+            details={"campaign_id": self.campaign_id, "consent_status": self.l_consent.get()},
+        )
         self.refresh_leads(); messagebox.showinfo("ذخیره شد","سرنخ ذخیره شد.")
 
     def refresh_leads(self):

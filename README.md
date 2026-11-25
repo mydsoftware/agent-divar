@@ -64,12 +64,14 @@ agent-divar/
 ├── .github/workflows/ci.yml
 ├── app.py
 ├── browser_runner.py
+├── storage.py
 ├── requirements.txt
 ├── run_windows.bat
 ├── docs/
 │   └── ROADMAP_FA.md
 └── tests/
-    └── test_smoke.py
+    ├── test_smoke.py
+    └── test_storage.py
 ```
 
 پایگاه داده محلی در مسیر `data/leads.sqlite3` ساخته می‌شود. از اطلاعات مشتریان محافظت کنید و فقط داده‌های ضروری و مجاز را نگهداری کنید.

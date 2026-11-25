@@ -124,16 +124,17 @@ class SmokeTests(unittest.TestCase):
         self.assertIn("subprocess.Popen", source)
 
     def test_database_schema_contains_campaigns_and_leads(self):
-        source = APP.read_text(encoding="utf-8")
-        self.assertIn("CREATE TABLE IF NOT EXISTS campaigns", source)
-        self.assertIn("CREATE TABLE IF NOT EXISTS leads", source)
-        self.assertIn("UNIQUE", source)
-        self.assertIn("published_within_hours", source)
-        self.assertIn("۳ ساعت گذشته", source)
-        self.assertIn("۱۲ ساعت گذشته", source)
-        self.assertIn("۱ روز گذشته", source)
-        self.assertIn("۳ روز گذشته", source)
-        self.assertIn("۷ روز گذشته", source)
+        storage_source = (ROOT / "storage.py").read_text(encoding="utf-8")
+        app_source = APP.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS campaigns", storage_source)
+        self.assertIn("CREATE TABLE IF NOT EXISTS leads", storage_source)
+        self.assertIn("UNIQUE", storage_source)
+        self.assertIn("published_within_hours", storage_source)
+        self.assertIn("۳ ساعت گذشته", app_source)
+        self.assertIn("۱۲ ساعت گذشته", app_source)
+        self.assertIn("۱ روز گذشته", app_source)
+        self.assertIn("۳ روز گذشته", app_source)
+        self.assertIn("۷ روز گذشته", app_source)
 
 
 if __name__ == "__main__":
