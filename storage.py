@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "leads.sqlite3"
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 
 
 def _utc_now() -> str:
@@ -207,6 +207,25 @@ def initialize(db_path: str | Path = DEFAULT_DB_PATH) -> None:
         """)
         con.execute("CREATE INDEX IF NOT EXISTS idx_property_media_lead ON property_media(lead_id, is_primary DESC, id DESC)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_property_media_hash ON property_media(lead_id, sha256)")
+
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS contact_review_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lead_id INTEGER NOT NULL UNIQUE,
+                contact_value TEXT NOT NULL DEFAULT '',
+                contact_source TEXT NOT NULL DEFAULT 'visible_listing_ui',
+                captured_at TEXT NOT NULL,
+                chat_available INTEGER NOT NULL DEFAULT 0 CHECK(chat_available IN (0,1)),
+                message_draft TEXT NOT NULL DEFAULT '',
+                review_status TEXT NOT NULL DEFAULT 'review_required'
+                    CHECK(review_status IN ('review_required','approved_for_manual_use','do_not_contact')),
+                reviewed_at TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(lead_id) REFERENCES leads(id) ON DELETE CASCADE
+            )
+        """)
+        con.execute("CREATE INDEX IF NOT EXISTS idx_contact_review_status ON contact_review_queue(review_status, captured_at DESC)")
 
         con.execute(f"PRAGMA user_version={CURRENT_SCHEMA_VERSION}")
 
